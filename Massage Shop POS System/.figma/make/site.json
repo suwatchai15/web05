@@ -1,0 +1,10 @@
+{
+  "description": "Streamline your massage business operations with an intuitive POS system designed for spas and wellness centers, enhancing customer management and sales tracking.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

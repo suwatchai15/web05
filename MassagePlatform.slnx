@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/WebApi/">
+    <Project Path="WebApi/MassagePlatform.WebApi/MassagePlatform.WebApi.csproj" />
+    <Project Path="WebApi/GeneratePlatformPasswordHash/GeneratePlatformPasswordHash.csproj" />
+    <Project Path="WebApi/MassagePlatform.WebApi.Tests/MassagePlatform.WebApi.Tests.csproj" />
+  </Folder>
+</Solution>

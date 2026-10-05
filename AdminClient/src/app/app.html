@@ -1,0 +1,419 @@
+@if (!isAuthenticated) {
+  <main class="auth-page">
+    <section class="auth-card">
+      <a class="brand auth-brand" href="/" aria-label="Massage Platform Admin"
+        ><span class="brand-mark">S</span
+        ><span><strong>SABAI</strong><small>PLATFORM ADMIN</small></span></a
+      >
+      <p class="eyebrow">PLATFORM ADMINISTRATION</p>
+      <h1>เข้าสู่ระบบผู้ดูแล</h1>
+      <p class="subtitle">ใช้บัญชีผู้ดูแลแพลตฟอร์มเพื่อจัดการร้านสมาชิก</p>
+      @if (errorMessage) {
+        <div class="error-banner" role="alert">{{ errorMessage }}</div>
+      }
+      <form class="form-stack" (ngSubmit)="login()">
+        <label
+          >ชื่อผู้ใช้<input
+            name="username"
+            [(ngModel)]="loginForm.username"
+            required
+            autocomplete="username"
+        /></label>
+        <label
+          >รหัสผ่าน<input
+            name="password"
+            [(ngModel)]="loginForm.password"
+            type="password"
+            required
+            autocomplete="current-password"
+        /></label>
+        <button class="primary-button" type="submit" [disabled]="busy">
+          {{ busy ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ' }}
+        </button>
+      </form>
+      <p class="auth-footnote">
+        บัญชีผู้ดูแลกำหนดจากการตั้งค่า server เท่านั้น ไม่มีบัญชีเริ่มต้นที่ฝังในระบบ
+      </p>
+    </section>
+  </main>
+} @else {
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="Sabai Platform Admin"
+        ><span class="brand-mark">S</span
+        ><span><strong>SABAI</strong><small>PLATFORM ADMIN</small></span></a
+      >
+      <div class="platform-label">
+        <span class="status-dot"></span><span>แพลตฟอร์ม</span
+        ><span class="platform-live">ONLINE</span>
+      </div>
+      <p class="nav-heading">จัดการระบบ</p>
+      <nav aria-label="เมนูผู้ดูแล">
+        <button
+          type="button"
+          class="nav-item"
+          [class.active]="activeView === 'dashboard'"
+          (click)="selectView('dashboard')"
+        >
+          <span>⌂</span><span>Dashboard</span>
+        </button>
+        <button
+          type="button"
+          class="nav-item"
+          [class.active]="activeView === 'organizations'"
+          (click)="selectView('organizations')"
+        >
+          <span>▦</span><span>Organizations</span
+          ><span class="nav-count">{{ tenants.length }}</span>
+        </button>
+        <section class="nav-group">
+          <button
+            type="button"
+            class="nav-group-toggle"
+            [class.active]="activeFeature?.group === 'Users & Access'"
+            [attr.aria-expanded]="usersAccessExpanded"
+            (click)="usersAccessExpanded = !usersAccessExpanded"
+          >
+            <span class="nav-group-icon">♙</span><span>Users &amp; Access</span>
+            <span class="nav-chevron" [class.expanded]="usersAccessExpanded">›</span>
+          </button>
+          @if (usersAccessExpanded) {
+            <div class="nav-children">
+              <button
+                type="button"
+                class="nav-child"
+                [class.active]="activeView === 'users'"
+                (click)="selectView('users')"
+              >
+                Users
+              </button>
+              <button
+                type="button"
+                class="nav-child"
+                [class.active]="activeView === 'roles'"
+                (click)="selectView('roles')"
+              >
+                Roles
+              </button>
+              <button
+                type="button"
+                class="nav-child"
+                [class.active]="activeView === 'permissions'"
+                (click)="selectView('permissions')"
+              >
+                Permissions
+              </button>
+            </div>
+          }
+        </section>
+        <section class="nav-group">
+          <button
+            type="button"
+            class="nav-group-toggle"
+            [class.active]="activeFeature?.group === 'Pricing & Packages'"
+            [attr.aria-expanded]="pricingExpanded"
+            (click)="pricingExpanded = !pricingExpanded"
+          >
+            <span class="nav-group-icon">฿</span><span>Pricing &amp; Packages</span>
+            <span class="nav-chevron" [class.expanded]="pricingExpanded">›</span>
+          </button>
+          @if (pricingExpanded) {
+            <div class="nav-children">
+              <button
+                type="button"
+                class="nav-child"
+                [class.active]="activeView === 'servicePricing'"
+                (click)="selectView('servicePricing')"
+              >
+                Service Pricing
+              </button>
+              <button
+                type="button"
+                class="nav-child"
+                [class.active]="activeView === 'packages'"
+                (click)="selectView('packages')"
+              >
+                Packages
+              </button>
+              <button
+                type="button"
+                class="nav-child"
+                [class.active]="activeView === 'memberships'"
+                (click)="selectView('memberships')"
+              >
+                Memberships
+              </button>
+              <button
+                type="button"
+                class="nav-child"
+                [class.active]="activeView === 'commissionRules'"
+                (click)="selectView('commissionRules')"
+              >
+                Commission Rules
+              </button>
+            </div>
+          }
+        </section>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="avatar">ผ</span>
+        <span class="admin-profile"><strong>ผู้ดูแลระบบ</strong><small>Platform admin</small></span>
+        <button type="button" class="logout-button" (click)="logout()">ออกจากระบบ</button>
+      </div>
+    </aside>
+
+    <main id="overview" class="main-content">
+      <header class="topbar">
+        <div class="mobile-brand">
+          <span class="brand-mark">S</span><strong>SABAI <small>ADMIN</small></strong>
+        </div>
+        <div class="topbar-actions">
+          <span class="environment"><i></i> Platform admin</span
+          ><button type="button" class="mobile-logout" (click)="logout()">ออกจากระบบ</button>
+        </div>
+      </header>
+      <div class="page">
+        @if (errorMessage) {
+          <div class="error-banner" role="alert">{{ errorMessage }}</div>
+        }
+        @if (successMessage) {
+          <div class="success-banner" role="status">{{ successMessage }}</div>
+        }
+
+        @if (activeView === 'dashboard') {
+          <section class="welcome">
+            <div>
+              <p class="eyebrow">PLATFORM OVERVIEW · {{ todayLabel }}</p>
+              <h1>ภาพรวมแพลตฟอร์ม</h1>
+              <p class="subtitle">จัดการร้านสมาชิกและบัญชีผู้ดูแลได้จากที่เดียว</p>
+            </div>
+            <button type="button" class="primary-button" (click)="selectView('organizations')">
+              <span>＋</span> สร้างร้านใหม่
+            </button>
+          </section>
+
+          <section class="summary-grid" aria-label="สรุปสถานะร้านสมาชิก">
+            <article class="summary-card total-card">
+              <span class="summary-icon green">▦</span
+              ><span class="summary-label">ร้านสมาชิกทั้งหมด</span
+              ><strong>{{ tenants.length }}</strong
+              ><small>ร้านใน platform catalog</small>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon green">✓</span><span class="summary-label">เปิดใช้งาน</span
+              ><strong>{{ activeTenantCount }}</strong
+              ><small>สามารถเข้าสู่ระบบร้านได้</small>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon muted">Ⅱ</span><span class="summary-label">ระงับ</span
+              ><strong>{{ suspendedTenantCount }}</strong
+              ><small>ร้านที่ปิดการใช้งาน</small>
+            </article>
+          </section>
+
+          <section class="dashboard-panel">
+            <div class="dashboard-panel-icon">▦</div>
+            <div>
+              <p class="eyebrow">ORGANIZATION MANAGEMENT</p>
+              <h2>จัดการร้านสมาชิก</h2>
+              <p>ดูสถานะร้านที่ลงทะเบียนและสร้างองค์กรใหม่พร้อมฐานข้อมูลแยก</p>
+            </div>
+            <button type="button" class="primary-button" (click)="selectView('organizations')">
+              ไปยัง Organizations <span>→</span>
+            </button>
+          </section>
+        } @else if (activeView === 'organizations') {
+          <section class="welcome">
+            <div>
+              <p class="eyebrow">ORGANIZATION MANAGEMENT · {{ todayLabel }}</p>
+              <h1>Organizations</h1>
+              <p class="subtitle">จัดการร้านสมาชิกและบัญชีเจ้าของร้าน</p>
+            </div>
+            <a class="primary-button" href="#create-tenant"><span>＋</span> สร้างร้านใหม่</a>
+          </section>
+          <div class="content-grid">
+            <section id="tenants" class="panel tenant-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>ร้านสมาชิก</h2>
+                  <p>แต่ละร้านมีฐานข้อมูลและบัญชีเจ้าของแยกกัน</p>
+                </div>
+                <span class="tenant-count"
+                  >{{ filteredTenants.length }} <span>/ {{ tenants.length }}</span></span
+                >
+              </div>
+              <div class="tenant-tools">
+                <label class="tenant-search"
+                  ><span aria-hidden="true">⌕</span
+                  ><input
+                    type="search"
+                    aria-label="ค้นหาร้านสมาชิก"
+                    [(ngModel)]="tenantSearch"
+                    placeholder="ค้นหาชื่อร้านหรือรหัสร้าน"
+                /></label>
+                <div class="tenant-filters" aria-label="กรองสถานะร้าน">
+                  <button
+                    type="button"
+                    [class.active]="tenantFilter === 'all'"
+                    (click)="tenantFilter = 'all'"
+                  >
+                    ทั้งหมด <span>{{ tenants.length }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    [class.active]="tenantFilter === 'active'"
+                    (click)="tenantFilter = 'active'"
+                  >
+                    เปิดใช้งาน <span>{{ activeTenantCount }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    [class.active]="tenantFilter === 'suspended'"
+                    (click)="tenantFilter = 'suspended'"
+                  >
+                    ระงับ <span>{{ suspendedTenantCount }}</span>
+                  </button>
+                </div>
+              </div>
+              @if (!tenants.length) {
+                <div class="empty-state">
+                  <span class="empty-icon">▦</span><strong>ยังไม่มีร้านสมาชิก</strong>
+                  <p>สร้างร้านแรกเพื่อเริ่มต้นใช้งานแพลตฟอร์ม</p>
+                  <a href="#create-tenant">สร้างร้านสมาชิก <span>→</span></a>
+                </div>
+              } @else if (!filteredTenants.length) {
+                <div class="empty-state no-results">
+                  <span class="empty-icon">⌕</span><strong>ไม่พบร้านที่ตรงกับการค้นหา</strong>
+                  <p>ลองค้นหาด้วยชื่อหรือรหัสร้านอื่น</p>
+                  <button type="button" (click)="tenantSearch = ''; tenantFilter = 'all'">
+                    ล้างตัวกรอง
+                  </button>
+                </div>
+              } @else {
+                <div class="tenant-list">
+                  @for (tenant of filteredTenants; track tenant.id) {
+                    <article class="tenant-row">
+                      <span class="tenant-avatar" [class.inactive]="!tenant.isActive">{{
+                        tenant.name.slice(0, 1)
+                      }}</span>
+                      <span class="tenant-copy"
+                        ><strong>{{ tenant.name }}</strong
+                        ><small><span>รหัสร้าน</span> {{ tenant.slug }}</small></span
+                      >
+                      <span
+                        class="status"
+                        [class.confirmed]="tenant.isActive"
+                        [class.suspended]="!tenant.isActive"
+                        ><i></i>{{ tenant.isActive ? 'เปิดใช้งาน' : 'ระงับ' }}</span
+                      >
+                    </article>
+                  }
+                </div>
+              }
+            </section>
+
+            <section id="create-tenant" class="panel create-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="form-kicker">NEW TENANT</p>
+                  <h2>สร้างร้านสมาชิก</h2>
+                  <p>ระบบจะ provision ฐานข้อมูลและบัญชีเจ้าของร้าน</p>
+                </div>
+                <span class="create-icon">＋</span>
+              </div>
+              <form class="form-stack" (ngSubmit)="createTenant()">
+                <label
+                  >ชื่อร้าน<span class="required-mark">*</span
+                  ><input
+                    name="name"
+                    [(ngModel)]="tenantForm.name"
+                    required
+                    minlength="2"
+                    maxlength="160"
+                    placeholder="เช่น บ้านสบาย นวดเพื่อสุขภาพ"
+                /></label>
+                <label
+                  >รหัสร้าน (slug)<span class="required-mark">*</span
+                  ><input
+                    name="slug"
+                    [(ngModel)]="tenantForm.slug"
+                    required
+                    minlength="1"
+                    maxlength="63"
+                    pattern="[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+                    placeholder="baan-sabai"
+                  /><small>ใช้อักษรอังกฤษตัวเล็ก ตัวเลข และขีดกลาง</small></label
+                >
+                <label
+                  >อีเมลเจ้าของร้าน<span class="required-mark">*</span
+                  ><input
+                    name="ownerEmail"
+                    type="email"
+                    [(ngModel)]="tenantForm.ownerEmail"
+                    required
+                    maxlength="254"
+                    placeholder="owner@example.com"
+                /></label>
+                <label
+                  >รหัสผ่านชั่วคราว<span class="required-mark">*</span
+                  ><input
+                    name="ownerPassword"
+                    type="password"
+                    [(ngModel)]="tenantForm.ownerPassword"
+                    required
+                    minlength="12"
+                    autocomplete="new-password"
+                    placeholder="อย่างน้อย 12 ตัวอักษร"
+                  /><small>ส่งมอบรหัสผ่านให้เจ้าของร้านผ่านช่องทางที่ปลอดภัย</small></label
+                >
+                <button class="primary-button create-button" type="submit" [disabled]="busy">
+                  {{ busy ? 'กำลังสร้างฐานข้อมูลร้าน…' : 'สร้างร้านและบัญชีเจ้าของ' }}
+                  @if (!busy) {
+                    <span>→</span>
+                  }
+                </button>
+              </form>
+            </section>
+          </div>
+
+          <section class="security-note">
+            <span class="security-icon">⌑</span>
+            <div>
+              <strong>การแยกข้อมูลและความปลอดภัย</strong>
+              <p>
+                API จะสร้างฐานข้อมูล PostgreSQL แยกต่อร้าน
+                รหัสผ่านชั่วคราวควรส่งให้เจ้าของร้านผ่านช่องทางที่ปลอดภัย
+              </p>
+            </div>
+          </section>
+        } @else if (activeFeature; as feature) {
+          <section class="welcome">
+            <div>
+              <p class="eyebrow">{{ feature.group }} · PLATFORM ADMIN</p>
+              <h1>{{ feature.title }}</h1>
+              <p class="subtitle">{{ feature.description }}</p>
+            </div>
+            <span class="coming-soon"><i></i> กำลังพัฒนา</span>
+          </section>
+          <section class="feature-placeholder">
+            <div class="feature-placeholder-icon">⌑</div>
+            <p class="eyebrow">COMING SOON</p>
+            <h2>ส่วนนี้ยังไม่พร้อมใช้งาน</h2>
+            <p>
+              API ปัจจุบันยังไม่มีบริการสำหรับ {{ feature.title }} ในระดับ Platform Admin
+              จึงยังไม่สามารถแสดงหรือแก้ไขข้อมูลได้
+            </p>
+            <div class="feature-placeholder-note">
+              <strong>ข้อมูลที่มีอยู่ยังปลอดภัย</strong>
+              <span>ไม่มีการใช้ข้อมูลตัวอย่างหรือบันทึกการเปลี่ยนแปลงที่ยังไม่รองรับ</span>
+            </div>
+            <button type="button" class="primary-button" (click)="selectView('organizations')">
+              กลับไป Organizations <span>→</span>
+            </button>
+          </section>
+        }
+        <footer>Massage Platform <span>·</span> พื้นที่ผู้ดูแลระบบ</footer>
+      </div>
+    </main>
+  </div>
+}

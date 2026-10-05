@@ -1,0 +1,6 @@
+@MassagePlatform.WebApi_HostAddress = http://localhost:5144
+
+GET {{MassagePlatform.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
