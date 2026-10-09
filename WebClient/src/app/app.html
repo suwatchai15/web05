@@ -490,6 +490,43 @@
           </section>
         }
 
+        @if (activeSection === 'orders') {
+          <section class="orders-page">
+            <header class="orders-heading">
+              <div><p>รายการขายของร้าน</p><h2>Order</h2></div>
+              <label>วันที่
+                <input type="date" [ngModel]="selectedDate" (ngModelChange)="loadOrdersForDate($event)">
+              </label>
+            </header>
+            <div class="orders-summary">
+              <div><span>จำนวนรายการ</span><strong>{{ orderSales.length }}</strong></div>
+              <div><span>ยอดขายรวม</span><strong>฿{{ orderSalesTotal | number:'1.0-2' }}</strong></div>
+            </div>
+            <div class="orders-table-wrap">
+              <table class="orders-table" aria-label="รายการ Order">
+                <thead><tr><th>เลขที่ Order</th><th>เวลา</th><th>สาขา</th><th>รายการ</th><th>ลูกค้า</th><th>การชำระเงิน</th><th class="orders-amount">ยอดรวม</th></tr></thead>
+                <tbody>
+                  @if (orderSales.length) {
+                    @for (sale of orderSales; track sale.id) {
+                      <tr>
+                        <td class="order-number">{{ sale.saleNumber }}</td>
+                        <td>{{ timeLabel(sale.createdAt) }}</td>
+                        <td>{{ branchName(sale.branchId) }}</td>
+                        <td><div class="order-table-items">@for (item of sale.items; track item.id) { <span>{{ item.serviceName }} × {{ item.quantity }}</span> }</div></td>
+                        <td>{{ sale.customerId ? customerName(sale.customerId) : 'ลูกค้าทั่วไป' }}</td>
+                        <td>{{ paymentMethodLabel(sale.paymentMethod) }}</td>
+                        <td class="orders-amount order-total">฿{{ sale.total | number:'1.0-2' }}</td>
+                      </tr>
+                    }
+                  } @else {
+                    <tr><td class="orders-empty" colspan="7"><strong>ยังไม่มีรายการ Order ในวันที่เลือก</strong><span>เมื่อบันทึกการขายจากหน้า POS รายการจะแสดงที่นี่</span></td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+
         @if (activeSection === 'rooms') {
           <section class="rooms-page">
             <div class="rooms-summary">
@@ -509,30 +546,42 @@
                 }
               </div>
               <button class="room-refresh-button" type="button" (click)="loadRoomBoardAppointments()" [disabled]="busy">รีเฟรช</button>
-              <button class="room-add-button" type="button" (click)="roomCreateOpen = !roomCreateOpen"><span>＋</span> เพิ่มห้อง</button>
+              <button class="room-add-button" type="button" (click)="openRoomCreate()"><span>＋</span> เพิ่มห้อง</button>
             </div>
-            @if (roomCreateOpen) {
-              <section class="panel room-create-panel">
-                <div class="panel-heading"><div><h2>เพิ่มห้องหรือเตียง</h2><p>กำหนดชื่อและสาขาสำหรับใช้จัดการนัดหมาย</p></div></div>
-                <form class="room-create-form" (ngSubmit)="createRoom()">
-                  <label>สาขา<ng-select name="boardRoomBranch" [(ngModel)]="roomForm.branchId" [clearable]="false" [searchable]="false" required><ng-option [value]="selectedBranchId">{{ currentBranchName }}</ng-option></ng-select></label>
-                  <label>ชื่อห้อง / เตียง<input name="boardRoomName" [(ngModel)]="roomForm.name" placeholder="เช่น ห้อง 01 หรือ เตียง A1" required maxlength="80"></label>
-                  <button class="primary-button" type="submit" [disabled]="busy || !branches.length">บันทึกห้อง</button>
-                </form>
-              </section>
+            @if (roomFormDialogOpen) {
+              <div class="user-dialog-backdrop" (click)="closeRoomForm()">
+                <section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="room-dialog-title" (click)="$event.stopPropagation()">
+                  <div class="panel-heading"><div><h2 id="room-dialog-title">{{ editingRoomId ? 'แก้ไขห้องบริการ' : 'เพิ่มห้องบริการ' }}</h2><p>กำหนดห้องหรือเตียงสำหรับจัดคิว</p></div><button type="button" aria-label="ปิด" class="dialog-close" (click)="closeRoomForm()">×</button></div>
+                  <form class="form-stack" (ngSubmit)="createRoom()">
+                    <label>สาขา<ng-select name="boardRoomBranch" [(ngModel)]="roomForm.branchId" [clearable]="false" [searchable]="false" required>@for(branch of branches; track branch.id){@if(branch.isActive){<ng-option [value]="branch.id">{{ branch.name }}</ng-option>}}</ng-select></label>
+                    <label>ชื่อห้อง / เตียง<input name="boardRoomName" [(ngModel)]="roomForm.name" placeholder="เช่น ห้อง 01 หรือ เตียง A1" required maxlength="80"></label>
+                    <div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy || !branches.length">{{ editingRoomId ? 'บันทึกการแก้ไข' : 'เพิ่มห้อง' }}</button><button class="customer-cancel-button" type="button" (click)="closeRoomForm()">ยกเลิก</button></div>
+                  </form>
+                </section>
+              </div>
             }
             <div class="room-board-grid">
               @for (room of filteredRooms; track room.id) {
                 <article class="room-board-card" [class.busy]="roomStatus(room) === 'busy'" [class.booked]="roomStatus(room) === 'booked'" [class.disabled]="roomStatus(room) === 'disabled'">
-                  <div class="room-board-card-top"><span class="room-card-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">@for (path of iconPaths['door-open']; track $index) { <path [attr.d]="path" /> }</svg></span><span class="room-board-status" [class.available]="roomStatus(room) === 'available'" [class.busy]="roomStatus(room) === 'busy'" [class.booked]="roomStatus(room) === 'booked'" [class.disabled]="roomStatus(room) === 'disabled'"><i></i>{{ roomStatusLabel(room) }}</span></div>
+                  <div class="room-board-card-top">
+                    <span class="room-card-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M9 21V7h8v14M14 14h.01"></path></svg></span>
+                    <span class="room-board-status" [class.available]="roomStatus(room) === 'available'" [class.busy]="roomStatus(room) === 'busy'" [class.booked]="roomStatus(room) === 'booked'" [class.disabled]="roomStatus(room) === 'disabled'"><i></i>{{ roomStatusLabel(room) }}</span>
+                    @if (canManage) { <button class="room-card-edit" type="button" [attr.aria-label]="'แก้ไข ' + room.name" title="แก้ไขห้อง" (click)="editRoom(room)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button> }
+                  </div>
                   <h3>{{ room.name }}</h3>
                   <p class="room-board-branch">{{ branchName(room.branchId) }}</p>
                   @if (room.isActive && roomCurrentAppointment(room); as appointment) {
-                    <div class="room-appointment-detail"><strong>{{ customerName(appointment.customerId) }}</strong><span>{{ serviceName(appointment.serviceId) }}</span><small>♙ {{ staffName(appointment.staffId) }} · ◷ {{ timeLabel(appointment.startsAt) }}</small></div>
+                    <div class="room-appointment-detail">
+                      <span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>{{ customerName(appointment.customerId) }}</span>
+                      <span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>{{ roomTimeRemaining(appointment) }}</span>
+                    </div>
                   } @else {
                     <div class="room-empty-detail">{{ room.isActive ? 'พร้อมให้บริการ' : 'ห้องนี้ปิดใช้งาน' }}</div>
                   }
-                  <div class="room-card-footer"><span>{{ room.isActive ? 'พร้อมรับนัดหมาย' : 'ไม่เปิดให้จอง' }}</span><span>{{ room.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span></div>
+                  <div class="room-card-footer">
+                    @if (room.isActive && roomCurrentAppointment(room); as appointment) { <span>Therapist: {{ staffName(appointment.staffId) }}</span> } @else { <span>ยังไม่ระบุ Therapist</span> }
+                    @if (canManage) { <button class="room-manage-button" type="button" (click)="editRoom(room)">จัดการ</button> }
+                  </div>
                 </article>
               } @empty {
                 <div class="room-board-empty"><span aria-hidden="true">⌖</span><strong>{{ roomsInSelectedBranch.length ? 'ไม่พบห้องที่ตรงกับตัวกรอง' : 'ยังไม่มีห้องในสาขานี้' }}</strong><small>{{ roomsInSelectedBranch.length ? 'ลองเปลี่ยนคำค้นหาหรือตัวกรอง' : 'เพิ่มห้องแรกเพื่อเริ่มจัดการคิวบริการ' }}</small></div>
@@ -580,70 +629,72 @@
 
         @if (activeSection === 'services') {
           <section class="welcome"><div><p class="eyebrow">จัดการบริการ</p><h1>บริการและราคา</h1><p class="subtitle">กำหนดรายการนวด ระยะเวลา และราคาต่อครั้ง</p></div></section>
-          <div class="content-grid">
-            <section class="panel">
-              <div class="panel-heading"><div><h2>{{ editingServiceId ? 'แก้ไขบริการ' : 'เพิ่มบริการ' }}</h2><p>เช่น นวดไทย นวดน้ำมัน หรือนวดเท้า</p></div></div>
-              @if (canManage) {
-                <form class="form-stack" (ngSubmit)="createService()">
-                  <label>ชื่อบริการ<input name="serviceName" [(ngModel)]="serviceForm.name" required maxlength="160"></label>
-                  <div class="form-row"><label>ระยะเวลา (นาที)<input name="duration" type="number" min="5" max="1440" step="5" [(ngModel)]="serviceForm.durationMinutes" required></label><label>ราคา (บาท)<input name="price" type="number" min="0" step="0.01" [(ngModel)]="serviceForm.price" required></label></div>
-                  <div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy">{{ editingServiceId ? 'บันทึกการแก้ไข' : 'เพิ่มบริการ' }}</button>@if (editingServiceId) { <button class="customer-cancel-button" type="button" (click)="cancelServiceEdit()">ยกเลิก</button> }</div>
-                </form>
-              } @else { <div class="empty-state">บัญชีนี้ดูข้อมูลได้ แต่ไม่มีสิทธิ์แก้ไขบริการ</div> }
-            </section>
-            <section class="panel">
-              <div class="panel-heading"><div><h2>รายการบริการ</h2><p>{{ services.length }} รายการ</p></div></div>
-              @if (!services.length) { <div class="empty-state">ยังไม่มีบริการ เพิ่มรายการแรกของร้านได้เลย</div> }
-              @for (service of services; track service.id) {
-                <article class="resource-row"><span class="setup-icon lavender">✳</span><span><strong>{{ service.name }}</strong><small>{{ service.durationMinutes }} นาที · ฿{{ service.price }}</small></span><span class="status" [class.confirmed]="service.isActive">{{ service.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span>
-                  @if (canManage) { <div class="resource-actions"><button type="button" (click)="editService(service)">แก้ไข</button><button type="button" (click)="deleteService(service)" [disabled]="busy">ลบ</button></div> }
-                </article>
-              }
-            </section>
-          </div>
+          <section class="panel">
+            <div class="panel-heading"><div><h2>รายการบริการ</h2><p>{{ services.length }} รายการ</p></div>@if (canManage) { <button class="primary-button" type="button" (click)="openServiceCreate()">＋ เพิ่มบริการ</button> }</div>
+            @if (!services.length) { <div class="empty-state">ยังไม่มีบริการ เพิ่มรายการแรกของร้านได้เลย</div> } @else {
+              <div class="team-table-wrap"><table class="team-table"><thead><tr><th>ชื่อบริการ</th><th>ระยะเวลา</th><th>ราคา</th><th>สถานะ</th>@if(canManage){<th>จัดการ</th>}</tr></thead><tbody>
+                @for (service of services; track service.id) { <tr><td><strong>{{ service.name }}</strong></td><td>{{ service.durationMinutes }} นาที</td><td>฿{{ service.price | number:'1.2-2' }}</td><td><span class="status" [class.confirmed]="service.isActive">{{ service.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span></td>@if(canManage){<td class="users-row-actions"><button class="users-manage-button" type="button" (click)="editService(service)" [disabled]="busy">แก้ไข</button><button class="users-delete-button" type="button" (click)="serviceDeleteTarget = service" [disabled]="busy">ลบ</button></td>}</tr> }
+              </tbody></table></div>
+            }
+          </section>
+          @if (serviceFormDialogOpen) {
+            <div class="user-dialog-backdrop" (click)="closeServiceForm()"><section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="service-dialog-title" (click)="$event.stopPropagation()">
+              <div class="panel-heading"><div><h2 id="service-dialog-title">{{ editingServiceId ? 'แก้ไขบริการ' : 'เพิ่มบริการ' }}</h2><p>กำหนดชื่อบริการ ระยะเวลา และราคา</p></div><button class="icon-button" type="button" aria-label="ปิด" (click)="closeServiceForm()">×</button></div>
+              <form class="form-stack" (ngSubmit)="createService()"><label>ชื่อบริการ<input name="serviceName" [(ngModel)]="serviceForm.name" required maxlength="160"></label><div class="form-row"><label>ระยะเวลา (นาที)<input name="duration" type="number" min="5" max="1440" step="5" [(ngModel)]="serviceForm.durationMinutes" required></label><label>ราคา (บาท)<input name="price" type="number" min="0" step="0.01" [(ngModel)]="serviceForm.price" required></label></div><div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy">{{ editingServiceId ? 'บันทึกการแก้ไข' : 'เพิ่มบริการ' }}</button><button class="customer-cancel-button" type="button" (click)="closeServiceForm()">ยกเลิก</button></div></form>
+            </section></div>
+          }
+          @if (serviceDeleteTarget; as service) {
+            <div class="user-dialog-backdrop" (click)="cancelServiceDelete()"><section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="service-delete-title" (click)="$event.stopPropagation()"><div class="user-delete-icon">!</div><h2 id="service-delete-title">ยืนยันลบบริการ</h2><p>ต้องการลบบริการ <strong>{{ service.name }}</strong> หรือไม่?</p><div class="user-delete-actions"><button type="button" class="customer-cancel-button" (click)="cancelServiceDelete()">ยกเลิก</button><button type="button" class="user-delete-confirm-button" [disabled]="busy" (click)="confirmDeleteService()">ยืนยันลบ</button></div></section></div>
+          }
         }
-
         @if (activeSection === 'team') {
-          <section class="welcome"><div><p class="eyebrow">จัดการทีม</p><h1>ทีมหมอนวดและห้องบริการ</h1><p class="subtitle">จัดทีมงานและห้องที่พร้อมรองรับการนัดหมายในแต่ละสาขา</p></div></section>
-          <div class="content-grid">
-            <section class="panel">
-              <div class="panel-heading"><div><h2>{{ editingStaffId ? 'แก้ไขหมอนวด' : 'เพิ่มหมอนวด' }}</h2><p>กำหนดสาขาประจำและช่องทางติดต่อ</p></div></div>
-              @if (canManage) {
-                <form class="form-stack" (ngSubmit)="createStaff()">
-                  <label>สาขา<ng-select name="staffBranch" [(ngModel)]="staffForm.branchId" [clearable]="false" [searchable]="false" required><ng-option [value]="selectedBranchId">{{ currentBranchName }}</ng-option></ng-select></label>
-                  <label>ชื่อหมอนวด<input name="staffName" [(ngModel)]="staffForm.name" required maxlength="160"></label>
-                  <label>อีเมล (ถ้ามี)<input name="staffEmail" type="email" [(ngModel)]="staffForm.email"></label>
-                  <div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy || !branches.length">{{ editingStaffId ? 'บันทึกการแก้ไข' : 'เพิ่มหมอนวด' }}</button>@if (editingStaffId) { <button class="customer-cancel-button" type="button" (click)="cancelStaffEdit()">ยกเลิก</button> }</div>
-                </form>
-              } @else { <div class="empty-state">บัญชีนี้ดูข้อมูลได้ แต่ไม่มีสิทธิ์แก้ไขทีม</div> }
-              <hr>
-              <div class="panel-heading"><div><h2>{{ editingRoomId ? 'แก้ไขห้อง' : 'เพิ่มห้อง' }}</h2><p>ห้องใช้ตรวจสอบเวลาว่างไม่ให้คิวซ้อน</p></div></div>
-              @if (canManage) {
-                <form class="form-stack" (ngSubmit)="createRoom()">
-                  <label>สาขา<ng-select name="roomBranch" [(ngModel)]="roomForm.branchId" [clearable]="false" [searchable]="false" required><ng-option [value]="selectedBranchId">{{ currentBranchName }}</ng-option></ng-select></label>
-                  <label>ชื่อห้อง<input name="roomName" [(ngModel)]="roomForm.name" placeholder="ห้อง 1" required maxlength="80"></label>
-                  <div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy || !branches.length">{{ editingRoomId ? 'บันทึกการแก้ไข' : 'เพิ่มห้อง' }}</button>@if (editingRoomId) { <button class="customer-cancel-button" type="button" (click)="cancelRoomEdit()">ยกเลิก</button> }</div>
-                </form>
-              } @else { <div class="empty-state">ไม่มีสิทธิ์เพิ่มหรือแก้ไขห้อง</div> }
-            </section>
-            <section class="panel">
-              <div class="panel-heading"><div><h2>หมอนวด</h2><p>{{ selectedBranchActiveStaffCount }} คนที่เปิดใช้งาน</p></div></div>
-              @if (!staffInSelectedBranch.length) { <div class="empty-state">ยังไม่มีข้อมูลทีมหมอนวดในสาขานี้</div> }
-              @for (member of staffInSelectedBranch; track member.id) {
-                <article class="resource-row"><span class="avatar">♙</span><span><strong>{{ member.name }}</strong><small>{{ branchName(member.branchId) }}{{ member.email ? ' · ' + member.email : '' }}</small></span><span class="status" [class.confirmed]="member.isActive">{{ member.isActive ? 'พร้อมให้บริการ' : 'ปิดใช้งาน' }}</span>
-                  @if (canManage && member.isActive) { <div class="resource-actions"><button type="button" (click)="editStaff(member)">แก้ไข</button><button type="button" (click)="deactivateStaff(member)" [disabled]="busy">ปิดใช้งาน</button></div> }
-                </article>
+          <section class="team-hero">
+            <div class="team-hero-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">@for (path of iconPaths['users-round']; track $index) { <path [attr.d]="path" /> }</svg></div>
+            <div class="team-hero-copy"><p>MANAGEMENT</p><h2>Therapist / พนักงาน</h2><span>จัดการทีมหมอนวด ตารางงาน และห้องบริการของสาขา</span></div>
+            <div class="team-hero-metrics">
+              <div><span>พนักงานทั้งหมด</span><strong>{{ staffInSelectedBranch.length }}</strong></div>
+              <div><span>พร้อมให้บริการ</span><strong>{{ selectedBranchActiveStaffCount }}</strong></div>
+              <div><span>ปิดใช้งาน</span><strong>{{ staffInSelectedBranch.length - selectedBranchActiveStaffCount }}</strong></div>
+            </div>
+          </section>
+          <section class="panel team-management-panel">
+            <div class="team-tabs" role="tablist" aria-label="จัดการทีมและห้องบริการ"><button type="button" role="tab" class="team-tab-button" [class.active]="teamTab === 'staff'" [attr.aria-selected]="teamTab === 'staff'" (click)="teamTab = 'staff'">ทีมหมอนวด <span>{{ staffInSelectedBranch.length }}</span></button><button type="button" role="tab" class="team-tab-button" [class.active]="teamTab === 'rooms'" [attr.aria-selected]="teamTab === 'rooms'" (click)="teamTab = 'rooms'">ห้องบริการ <span>{{ roomsInSelectedBranch.length }}</span></button><button type="button" role="tab" class="team-tab-button" [class.active]="teamTab === 'schedule'" [attr.aria-selected]="teamTab === 'schedule'" (click)="teamTab = 'schedule'">ตารางงาน</button></div>
+            @if (teamTab === 'staff') {
+              <div class="team-panel-heading">
+                <div><h2>ทีมหมอนวด</h2><p>{{ selectedBranchActiveStaffCount }} คนพร้อมให้บริการ</p></div>
+                @if(canManage){<button class="primary-button" type="button" (click)="openStaffCreate()">＋ เพิ่มหมอนวด</button>}
+              </div>
+              <div class="team-tools">
+                <label class="team-search"><span aria-hidden="true">⌕</span><input name="staffSearch" [(ngModel)]="staffSearch" placeholder="ค้นหาชื่อหรืออีเมล..." aria-label="ค้นหาหมอนวด"></label>
+                <span>{{ filteredStaff.length }} รายการ</span>
+              </div>
+              @if (!filteredStaff.length) { <div class="empty-state">{{ staffInSelectedBranch.length ? 'ไม่พบหมอนวดที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลทีมหมอนวดในสาขานี้' }}</div> } @else {
+                <div class="team-table-wrap"><table class="team-table"><thead><tr><th>ชื่อหมอนวด</th><th>อีเมล</th><th>สถานะ</th>@if(canManage){<th>จัดการ</th>}</tr></thead><tbody>
+                  @for (member of filteredStaff; track member.id) {
+                    <tr><td><div class="team-person"><span class="team-person-avatar">{{ member.name.slice(0, 1) }}</span><div><strong>{{ member.name }}</strong><small>{{ branchName(member.branchId) }}</small></div></div></td><td>{{ member.email || '—' }}</td><td><span class="status" [class.confirmed]="member.isActive">{{ member.isActive ? 'พร้อมให้บริการ' : 'ปิดใช้งาน' }}</span></td>@if(canManage){<td class="users-row-actions"><button class="users-manage-button" type="button" (click)="editStaff(member)" [disabled]="busy">แก้ไข</button>@if(member.isActive){<button class="users-delete-button" type="button" (click)="staffDeleteTarget = member" [disabled]="busy">ปิดใช้งาน</button>}@else{<button class="users-manage-button" type="button" (click)="reactivateStaff(member)" [disabled]="busy">เปิดใช้งาน</button>}</td>}</tr>
+                  }
+                </tbody></table></div>
               }
-              <hr>
-              <div class="panel-heading"><div><h2>ห้องบริการ</h2><p>{{ roomsInSelectedBranch.length }} ห้อง</p></div></div>
-              @for (room of roomsInSelectedBranch; track room.id) {
-                <article class="resource-row"><span class="setup-icon green">⌖</span><span><strong>{{ room.name }}</strong><small>{{ branchName(room.branchId) }}</small></span><span class="status" [class.confirmed]="room.isActive">{{ room.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span>
-                  @if (canManage && room.isActive) { <div class="resource-actions"><button type="button" (click)="editRoom(room)">แก้ไข</button><button type="button" (click)="deactivateRoom(room)" [disabled]="busy">ปิดใช้งาน</button></div> }
-                </article>
+            } @else if (teamTab === 'rooms') {
+              <div class="panel-heading"><div><h2>ห้องบริการ</h2><p>{{ roomsInSelectedBranch.length }} ห้อง</p></div>@if(canManage){<button class="primary-button" type="button" (click)="openRoomCreate()">＋ เพิ่มห้อง</button>}</div>
+              @if (!roomsInSelectedBranch.length) { <div class="empty-state">ยังไม่มีห้องบริการในสาขานี้</div> } @else {
+                <div class="team-table-wrap"><table class="team-table"><thead><tr><th>ชื่อห้อง</th><th>สาขา</th><th>สถานะ</th>@if(canManage){<th>จัดการ</th>}</tr></thead><tbody>@for (room of roomsInSelectedBranch; track room.id) { <tr><td><strong>{{ room.name }}</strong></td><td>{{ branchName(room.branchId) }}</td><td><span class="status" [class.confirmed]="room.isActive">{{ room.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span></td>@if(canManage){<td class="users-row-actions"><button class="users-manage-button" type="button" (click)="editRoom(room)" [disabled]="busy">แก้ไข</button>@if(room.isActive){<button class="users-delete-button" type="button" (click)="roomDeleteTarget = room" [disabled]="busy">ลบ</button>}</td>}</tr> }</tbody></table></div>
               }
-            </section>
-          </div>
-          <section class="panel schedule-panel">
+            }
+          </section>
+          @if (staffFormDialogOpen) {
+            <div class="user-dialog-backdrop" (click)="closeStaffForm()"><section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="staff-dialog-title" (click)="$event.stopPropagation()"><div class="panel-heading"><div><h2 id="staff-dialog-title">{{ editingStaffId ? 'แก้ไขหมอนวด' : 'เพิ่มหมอนวด' }}</h2><p>กรอกข้อมูลทีมงานของสาขานี้</p></div><button class="icon-button" type="button" aria-label="ปิด" (click)="closeStaffForm()">×</button></div><form class="form-stack" (ngSubmit)="createStaff()"><label>สาขา<ng-select name="staffBranch" [(ngModel)]="staffForm.branchId" [clearable]="false" [searchable]="false" required>@for(branch of branches; track branch.id){@if(branch.isActive){<ng-option [value]="branch.id">{{ branch.name }}</ng-option>}}</ng-select></label><label>ชื่อหมอนวด<input name="staffName" [(ngModel)]="staffForm.name" required maxlength="160"></label><label>อีเมล (ถ้ามี)<input name="staffEmail" type="email" [(ngModel)]="staffForm.email"></label><div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy || !branches.length">{{ editingStaffId ? 'บันทึกการแก้ไข' : 'เพิ่มหมอนวด' }}</button><button class="customer-cancel-button" type="button" (click)="closeStaffForm()">ยกเลิก</button></div></form></section></div>
+          }
+          @if (staffDeleteTarget; as member) {
+            <div class="user-dialog-backdrop" (click)="cancelStaffDelete()"><section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="staff-delete-title" (click)="$event.stopPropagation()"><div class="user-delete-icon">!</div><h2 id="staff-delete-title">ยืนยันลบหมอนวด</h2><p>ต้องการลบ <strong>{{ member.name }}</strong> ออกจากรายชื่อที่เปิดใช้งานหรือไม่? ข้อมูลประวัติเดิมจะยังคงอยู่</p><div class="user-delete-actions"><button type="button" class="customer-cancel-button" (click)="cancelStaffDelete()">ยกเลิก</button><button type="button" class="user-delete-confirm-button" [disabled]="busy" (click)="confirmDeactivateStaff()">ยืนยันลบ</button></div></section></div>
+          }
+          @if (roomFormDialogOpen) {
+            <div class="user-dialog-backdrop" (click)="closeRoomForm()"><section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="room-dialog-title" (click)="$event.stopPropagation()"><div class="panel-heading"><div><h2 id="room-dialog-title">{{ editingRoomId ? 'แก้ไขห้องบริการ' : 'เพิ่มห้องบริการ' }}</h2><p>กำหนดห้องหรือเตียงสำหรับจัดคิว</p></div><button type="button" aria-label="ปิด" class="dialog-close" (click)="closeRoomForm()">×</button></div><form class="form-stack" (ngSubmit)="createRoom()"><label>สาขา<ng-select name="roomBranch" [(ngModel)]="roomForm.branchId" [clearable]="false" [searchable]="false" required>@for(branch of branches; track branch.id){@if(branch.isActive){<ng-option [value]="branch.id">{{ branch.name }}</ng-option>}}</ng-select></label><label>ชื่อห้อง<input name="roomName" [(ngModel)]="roomForm.name" placeholder="ห้อง 1" required maxlength="80"></label><div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy || !branches.length">{{ editingRoomId ? 'บันทึกการแก้ไข' : 'เพิ่มห้อง' }}</button><button class="customer-cancel-button" type="button" (click)="closeRoomForm()">ยกเลิก</button></div></form></section></div>
+          }
+          @if (roomDeleteTarget; as room) {
+            <div class="user-dialog-backdrop" (click)="cancelRoomDelete()"><section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="room-delete-title" (click)="$event.stopPropagation()"><div class="user-delete-icon">!</div><h2 id="room-delete-title">ยืนยันลบห้องบริการ</h2><p>ต้องการลบ <strong>{{ room.name }}</strong> ออกจากห้องที่เปิดใช้งานหรือไม่? ข้อมูลประวัติเดิมจะยังคงอยู่</p><div class="user-delete-actions"><button type="button" class="customer-cancel-button" (click)="cancelRoomDelete()">ยกเลิก</button><button type="button" class="user-delete-confirm-button" [disabled]="busy" (click)="confirmDeactivateRoom()">ยืนยันลบ</button></div></section></div>
+          }          @if (teamTab === 'schedule') {
+            <section class="panel schedule-panel">
             <div class="panel-heading"><div><h2>ตารางเวลาทำงานและวันหยุด</h2><p>กำหนดเวลาประจำสัปดาห์และข้อยกเว้นรายวัน ระบบจะไม่รับนัดนอกเวลาทำงาน</p></div></div>
             @if (!staffInSelectedBranch.length) { <div class="empty-state">เพิ่มหมอนวดในสาขานี้ก่อนจึงจะกำหนดตารางทำงานได้</div> } @else {
               <label class="schedule-staff-select">เลือกหมอนวด
@@ -688,46 +739,59 @@
               }
             }
           </section>
+          }
         }
 
         @if (activeSection === 'customers') {
           <section class="customers-page">
-            <div class="customers-heading"><div><p class="eyebrow">จัดการข้อมูลลูกค้า</p><h1>ลูกค้า</h1><p class="subtitle">ข้อมูลและประวัตินัดหมายของลูกค้าในร้าน</p></div><button class="customer-add-button" type="button" (click)="customerCreateOpen = !customerCreateOpen"><span>＋</span> เพิ่มลูกค้า</button></div>
             @if (customerCreateOpen) {
-              <section class="panel customer-create-panel">
-                <div class="panel-heading"><div><h2>{{ editingCustomerId ? 'แก้ไขข้อมูลลูกค้า' : 'เพิ่มลูกค้าใหม่' }}</h2><p>บันทึกข้อมูลติดต่อเพื่อใช้สร้างนัดหมาย</p></div></div>
-                <form class="customer-create-form" (ngSubmit)="createCustomer()">
-                  <label>ชื่อ-นามสกุล<input name="customerName" [(ngModel)]="customerForm.name" required maxlength="160"></label>
-                  <label>เบอร์โทรศัพท์<input name="customerPhone" type="tel" [(ngModel)]="customerForm.phone" maxlength="40"></label>
-                  <label>อีเมล<input name="customerEmail" type="email" [(ngModel)]="customerForm.email"></label>
-                  <label class="customer-notes-field">หมายเหตุ<input name="customerNotes" [(ngModel)]="customerForm.notes" maxlength="1000"></label>
-                  <div class="customer-form-actions"><button class="customer-cancel-button" type="button" (click)="cancelCustomerEdit()">ยกเลิก</button><button class="primary-button" type="submit" [disabled]="busy">{{ busy ? 'กำลังบันทึก…' : editingCustomerId ? 'บันทึกการแก้ไข' : 'บันทึกลูกค้า' }}</button></div>
-                </form>
-              </section>
-            }
-            <div class="customer-metrics">
-              <article><span class="customer-metric-icon sage">♙</span><small>ลูกค้าทั้งหมด</small><strong>{{ customers.length | number }}</strong><span class="customer-metric-caption">รายชื่อในระบบ</span></article>
-              <article><span class="customer-metric-icon blue">⌕</span><small>มีเบอร์โทรศัพท์</small><strong>{{ customersWithPhone | number }}</strong><span class="customer-metric-caption">ช่องทางติดต่อ</span></article>
-              <article><span class="customer-metric-icon lavender">✉</span><small>มีอีเมล</small><strong>{{ customersWithEmail | number }}</strong><span class="customer-metric-caption">ช่องทางติดต่อ</span></article>
-              <article><span class="customer-metric-icon peach">▦</span><small>มีนัดหมายตามวันที่เลือก</small><strong>{{ customersToday | number }}</strong><span class="customer-metric-caption">{{ selectedDateLabel }}</span></article>
+              <div class="user-dialog-backdrop" (click)="closeCustomerForm()">
+                <section class="user-dialog customer-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-dialog-title" (click)="$event.stopPropagation()">
+                  <button class="dialog-close" type="button" aria-label="ปิด" (click)="closeCustomerForm()">×</button>
+                  <p class="eyebrow">{{ editingCustomerId ? 'EDIT CUSTOMER' : 'NEW CUSTOMER' }}</p>
+                  <h2 id="customer-dialog-title">{{ editingCustomerId ? 'แก้ไขข้อมูลลูกค้า' : 'เพิ่มลูกค้าใหม่' }}</h2>
+                  <p class="user-dialog-description">ข้อมูลนี้ใช้ในการจอง บันทึกประวัติ และสะสมคะแนน</p>
+                  <form class="form-stack customer-form-grid" (ngSubmit)="createCustomer()">
+                    <label class="customer-field-full">ชื่อ-นามสกุล *<input name="customerName" [(ngModel)]="customerForm.name" placeholder="กรอกชื่อและนามสกุล" required maxlength="160"></label>
+                    <label>เบอร์โทรศัพท์<input name="customerPhone" type="tel" [(ngModel)]="customerForm.phone" placeholder="08X-XXX-XXXX" maxlength="40"></label>
+                    <label>อีเมล<input name="customerEmail" type="email" [(ngModel)]="customerForm.email" placeholder="customer@email.com" maxlength="254"></label>
+                    <label class="customer-field-full">หมายเหตุ<textarea name="customerNotes" [(ngModel)]="customerForm.notes" rows="3" maxlength="1000" placeholder="เช่น แจ้งเพิ่มเติมเกี่ยวกับลูกค้า"></textarea></label>
+                    @if (errorMessage) { <div class="error-banner customer-field-full" role="alert">{{ errorMessage }}</div> }
+                    <div class="form-actions customer-field-full"><button class="primary-button" type="submit" [disabled]="busy || !customerForm.name.trim()">{{ busy ? 'กำลังบันทึก…' : editingCustomerId ? 'บันทึกการแก้ไข' : 'เพิ่มลูกค้า' }}</button><button class="customer-cancel-button" type="button" (click)="closeCustomerForm()" [disabled]="busy">ยกเลิก</button></div>
+                  </form>
+                </section>
+              </div>
+            }            <div class="customer-metrics">
+              <article><span class="customer-metric-icon sage"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"></circle><path d="M3 20v-1.4a5.4 5.4 0 0 1 10.8 0V20M16 5.2a3.2 3.2 0 0 1 0 6.2M17 15a4 4 0 0 1 4 4v1"></path></svg></span><small>ลูกค้าทั้งหมด</small><strong>{{ customers.length | number }}</strong><span class="customer-metric-caption">รายชื่อในระบบ</span></article>
+              <article><span class="customer-metric-icon blue"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"></rect><path d="M9 6h6M10 18h4"></path></svg></span><small>มีช่องทางติดต่อ</small><strong>{{ customersWithContact | number }}</strong><span class="customer-metric-caption">มีเบอร์โทรหรืออีเมล</span></article>
+              <article><span class="customer-metric-icon lavender"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg></span><small>นัดหมายตามวันที่เลือก</small><strong>{{ customersToday | number }}</strong><span class="customer-metric-caption">{{ selectedDateLabel }}</span></article>
             </div>
             <section class="customer-directory panel">
-              <div class="customer-directory-heading"><div><h2>รายชื่อลูกค้า</h2><p>ข้อมูลจริงจากฐานข้อมูลร้าน · {{ filteredCustomers.length }}{{ customerSearch ? '' : ' จาก ' + customers.length }} คน</p></div><label class="customer-search"><span aria-hidden="true">⌕</span><input name="customerSearch" [ngModel]="customerSearch" (ngModelChange)="searchCustomers($event)" placeholder="ค้นหาชื่อ เบอร์โทร หรืออีเมล..." aria-label="ค้นหาลูกค้า"></label></div>
+              <div class="customer-directory-heading"><div><h2>รายชื่อลูกค้า</h2><p>จัดการข้อมูลและประวัติของลูกค้า</p></div><button class="customer-add-button" type="button" (click)="openCustomerCreate()"><span>＋</span> เพิ่มลูกค้า</button></div>
+              <div class="customer-tools">
+                <label class="customer-search"><span aria-hidden="true">⌕</span><input name="customerSearch" [ngModel]="customerSearch" (ngModelChange)="searchCustomers($event)" placeholder="ค้นหาชื่อ เบอร์โทร หรืออีเมล..." aria-label="ค้นหาลูกค้า"></label>
+                <div class="customer-filters" role="group" aria-label="กรองรายชื่อลูกค้า">
+                  <button type="button" [class.active]="customerFilter === 'all'" (click)="customerFilter = 'all'">ทั้งหมด</button>
+                  <button type="button" [class.active]="customerFilter === 'phone'" (click)="customerFilter = 'phone'">มีเบอร์โทร</button>
+                  <button type="button" [class.active]="customerFilter === 'email'" (click)="customerFilter = 'email'">มีอีเมล</button>
+                  <button type="button" [class.active]="customerFilter === 'today'" (click)="customerFilter = 'today'">มีนัดวันที่เลือก</button>
+                </div>
+                <span>{{ filteredCustomers.length }} รายการ</span>
+              </div>
               @if (!filteredCustomers.length) {
                 <div class="empty-state">{{ customers.length ? 'ไม่พบลูกค้าที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลลูกค้า เพิ่มรายชื่อแรกของร้านได้เลย' }}</div>
               } @else {
                 <div class="customer-table-wrap">
                   <table class="customer-table">
-                    <thead><tr><th>ชื่อลูกค้า</th><th>เบอร์โทรศัพท์</th><th>อีเมล</th><th>นัดหมายตามวันที่เลือก</th><th>หมายเหตุ</th><th>จัดการ</th></tr></thead>
+                    <thead><tr><th>ลูกค้า</th><th>ติดต่อ</th><th>นัดหมายวันที่เลือก</th><th>หมายเหตุ</th><th>จัดการ</th></tr></thead>
                     <tbody>
                       @for (customer of filteredCustomers; track customer.id) {
                         <tr>
                           <td><span class="customer-name-cell"><i>{{ customerInitial(customer.name) }}</i><strong>{{ customer.name }}</strong></span></td>
-                          <td>{{ customer.phone || '—' }}</td>
-                          <td>{{ customer.email || '—' }}</td>
+                          <td class="customer-contact-cell"><strong>{{ customer.phone || '—' }}</strong><span>{{ customer.email || '—' }}</span></td>
                           <td><span class="customer-visit-count">{{ customerAppointmentCount(customer.id) }}</span> คิว</td>
                           <td class="customer-note">{{ customer.notes || '—' }}</td>
-                          <td><div class="resource-actions"><button type="button" (click)="editCustomer(customer)">แก้ไข</button><button type="button" (click)="deleteCustomer(customer)" [disabled]="busy">ลบ</button></div></td>
+                          <td><div class="resource-actions"><button type="button" (click)="editCustomer(customer)">แก้ไข</button><button type="button" (click)="openCustomerDeleteConfirm(customer)" [disabled]="busy">ลบ</button></div></td>
                         </tr>
                       }
                     </tbody>
@@ -738,59 +802,152 @@
           </section>
         }
 
+          @if (customerDeleteTarget; as deleteTarget) {
+            <div class="user-dialog-backdrop" (click)="cancelCustomerDelete()">
+              <section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="customer-delete-title" (click)="$event.stopPropagation()">
+                <span class="user-delete-icon" aria-hidden="true">!</span>
+                <h2 id="customer-delete-title">ยืนยันการลบลูกค้า</h2>
+                <p>ต้องการลบข้อมูลของ <strong>{{ deleteTarget.name }}</strong> หรือไม่?</p>
+                <p class="branch-delete-note">ลูกค้าที่มีประวัตินัดหมายจะลบไม่ได้</p>
+                @if (errorMessage) { <div class="error-banner" role="alert">{{ errorMessage }}</div> }
+                <div class="user-delete-actions"><button class="customer-cancel-button" type="button" (click)="cancelCustomerDelete()" [disabled]="busy">ยกเลิก</button><button class="user-delete-confirm-button" type="button" (click)="confirmDeleteCustomer()" [disabled]="busy">{{ busy ? 'กำลังลบ…' : 'ยืนยันลบ' }}</button></div>
+              </section>
+            </div>
+          }
+
         @if (activeSection === 'branches') {
-          <section class="welcome"><div><p class="eyebrow">จัดการสถานที่ให้บริการ</p><h1>สาขาและห้องบริการ</h1><p class="subtitle">ข้อมูลสาขาใช้จัดหมอนวด ห้อง และตารางนัดหมาย</p></div></section>
-          <div class="content-grid">
-            <section class="panel">
-              <div class="panel-heading"><div><h2>{{ editingBranchId ? 'แก้ไขสาขา' : 'เพิ่มสาขา' }}</h2><p>ตั้งค่าเขตเวลาให้ตรงกับเวลาท้องถิ่น</p></div></div>
-              @if (canManage) {
+          <section class="welcome"><div><p class="eyebrow">จัดการสถานที่ให้บริการ</p><h1>สาขาและห้องบริการ</h1><p class="subtitle">ข้อมูลสาขา เขตเวลา และที่อยู่ของร้าน</p></div></section>
+          <section class="branches-workspace">
+            <header class="branches-toolbar">
+              <div><strong>สาขาทั้งหมด</strong><span>{{ branches.length }} สาขา</span></div>
+              @if (canManage) { <button class="primary-button" type="button" (click)="openBranchCreate()">＋ เพิ่มสาขา</button> }
+            </header>
+            <div class="branches-table-wrap">
+              <table class="branches-table" aria-label="รายการสาขา">
+                <thead><tr><th>ชื่อสาขา</th><th>ที่อยู่</th><th>เขตเวลา</th>@if (canManage) { <th class="branches-actions-heading">จัดการ</th> }</tr></thead>
+                <tbody>
+                  @if (branches.length) {
+                    @for (branch of branches; track branch.id) {
+                      <tr>
+                        <td class="branch-name-cell">{{ branch.name }}</td>
+                        <td>{{ branch.address || 'ไม่ระบุที่อยู่' }}</td>
+                        <td><span class="branch-timezone">{{ branch.timeZone }}</span></td>
+                        @if (canManage) {
+                          <td class="branches-row-actions users-row-actions">
+                            <button type="button" class="users-manage-button" (click)="editBranch(branch)" [disabled]="busy">แก้ไข</button>
+                            <button type="button" class="users-delete-button" (click)="openBranchDeleteConfirm(branch)" [disabled]="busy">ลบ</button>
+                          </td>
+                        }
+                      </tr>
+                    }
+                  } @else {
+                    <tr><td class="branches-empty" [attr.colspan]="canManage ? 4 : 3">ยังไม่มีสาขา เพิ่มสาขาแรกเพื่อเริ่มต้นใช้งาน</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+          @if (canManage && branchFormDialogOpen) {
+            <div class="user-dialog-backdrop" (click)="closeBranchForm()">
+              <section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="branch-dialog-title" (click)="$event.stopPropagation()">
+                <button class="dialog-close" type="button" aria-label="ปิด" (click)="closeBranchForm()">×</button>
+                <p class="eyebrow">BRANCH DETAILS</p>
+                <h2 id="branch-dialog-title">{{ editingBranchId ? 'แก้ไขสาขา' : 'เพิ่มสาขา' }}</h2>
+                <p class="user-dialog-description">กำหนดชื่อ ที่อยู่ และเขตเวลาประจำสาขา</p>
                 <form class="form-stack" (ngSubmit)="createBranch()">
                   <label>ชื่อสาขา<input name="branchName" [(ngModel)]="branchForm.name" required maxlength="160"></label>
                   <label>ที่อยู่<textarea name="branchAddress" [(ngModel)]="branchForm.address" rows="2" maxlength="500"></textarea></label>
                   <label>เขตเวลา<ng-select name="branchTimeZone" [(ngModel)]="branchForm.timeZone" [clearable]="false" [searchable]="false"><ng-option value="Asia/Bangkok">Asia/Bangkok</ng-option><ng-option value="UTC">UTC</ng-option></ng-select></label>
-                  <div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy">{{ editingBranchId ? 'บันทึกการแก้ไข' : 'เพิ่มสาขา' }}</button>@if (editingBranchId) { <button class="customer-cancel-button" type="button" (click)="cancelBranchEdit()">ยกเลิก</button> }</div>
+                  @if (errorMessage) { <div class="error-banner" role="alert">{{ errorMessage }}</div> }
+                  <div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy">{{ busy ? 'กำลังบันทึก…' : editingBranchId ? 'บันทึกการแก้ไข' : 'เพิ่มสาขา' }}</button><button class="customer-cancel-button" type="button" (click)="closeBranchForm()" [disabled]="busy">ยกเลิก</button></div>
                 </form>
-              } @else { <div class="empty-state">บัญชีนี้ดูข้อมูลได้ แต่ไม่มีสิทธิ์แก้ไขสาขา</div> }
-            </section>
-            <section class="panel">
-              <div class="panel-heading"><div><h2>สาขาทั้งหมด</h2><p>{{ branches.length }} สาขา</p></div></div>
-              @if (!branches.length) { <div class="empty-state">ยังไม่มีสาขา เพิ่มสาขาแรกเพื่อเริ่มต้น</div> }
-              @for (branch of branches; track branch.id) {
-                <article class="resource-row"><span class="setup-icon green">⌖</span><span><strong>{{ branch.name }}</strong><small>{{ branch.address || 'ยังไม่ได้ระบุที่อยู่' }} · {{ branch.timeZone }}</small></span>
-                  @if (canManage) { <div class="resource-actions"><button type="button" (click)="editBranch(branch)">แก้ไข</button><button type="button" (click)="deleteBranch(branch)" [disabled]="busy">ลบ</button></div> }
-                </article>
-              }
-            </section>
-          </div>
-        }
-        @if (activeSection === 'users') {
-          <section class="welcome"><div><p class="eyebrow">จัดการสิทธิ์เข้าระบบ</p><h1>บัญชีผู้ใช้</h1><p class="subtitle">สร้างบัญชีผู้จัดการหรือพนักงาน และเปิดหรือปิดสิทธิ์เข้าร้าน</p></div></section>
-          @if (canManage) {
-            <div class="content-grid">
-              <section class="panel">
-                <div class="panel-heading"><div><h2>เพิ่มบัญชีผู้ใช้</h2><p>รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษร</p></div></div>
-                <form class="form-stack" (ngSubmit)="createUser()">
-                  <label>อีเมล<input name="userEmail" type="email" [(ngModel)]="userForm.email" required maxlength="254" autocomplete="username"></label>
-                  <label>รหัสผ่านเริ่มต้น<input name="userPassword" type="password" [(ngModel)]="userForm.password" required minlength="12" autocomplete="new-password"></label>
-                  <label>บทบาท<ng-select name="userRole" [(ngModel)]="userForm.role" [clearable]="false" [searchable]="false"><ng-option value="Staff">พนักงาน</ng-option><ng-option value="Manager">ผู้จัดการ</ng-option></ng-select></label>
-                  <button class="primary-button" type="submit" [disabled]="busy">สร้างบัญชี</button>
-                </form>
-              </section>
-              <section class="panel">
-                <div class="panel-heading"><div><h2>บัญชีในร้าน</h2><p>{{ users.length }} บัญชี · ข้อมูลจาก API</p></div></div>
-                @if (!users.length) { <div class="empty-state">ยังไม่มีบัญชีอื่นในร้าน</div> }
-                @for (user of users; track user.id) {
-                  <article class="resource-row">
-                    <span class="avatar">♧</span>
-                    <span><strong>{{ user.email }}</strong><small>{{ user.role === 'Owner' ? 'เจ้าของร้าน' : user.role === 'Manager' ? 'ผู้จัดการ' : 'พนักงาน' }}</small></span>
-                    <span class="status" [class.confirmed]="user.isActive">{{ user.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span>
-                    @if (user.role !== 'Owner' && user.id !== currentUserId) {
-                      <div class="resource-actions"><button type="button" (click)="toggleUserActive(user)" [disabled]="busy">{{ user.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน' }}</button></div>
-                    }
-                  </article>
-                }
               </section>
             </div>
+          }
+          @if (branchDeleteTarget; as deleteTarget) {
+            <div class="user-dialog-backdrop" (click)="cancelBranchDelete()">
+              <section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="branch-delete-title" (click)="$event.stopPropagation()">
+                <span class="user-delete-icon" aria-hidden="true">!</span>
+                <h2 id="branch-delete-title">ยืนยันการลบสาขา</h2>
+                <p>ต้องการลบสาขา <strong>{{ deleteTarget.name }}</strong> หรือไม่?</p>
+                <p class="branch-delete-note">สาขาที่มีนัดหมายหรือรายการขายใช้งานอยู่จะลบไม่ได้</p>
+                @if (errorMessage) { <div class="error-banner" role="alert">{{ errorMessage }}</div> }
+                <div class="user-delete-actions"><button class="customer-cancel-button" type="button" (click)="cancelBranchDelete()" [disabled]="busy">ยกเลิก</button><button class="user-delete-confirm-button" type="button" (click)="confirmDeleteBranch()" [disabled]="busy">{{ busy ? 'กำลังลบ…' : 'ยืนยันลบ' }}</button></div>
+              </section>
+            </div>
+          }
+        }        @if (activeSection === 'users') {
+          <section class="welcome"><div><p class="eyebrow">จัดการสิทธิ์เข้าระบบ</p><h1>บัญชีผู้ใช้</h1><p class="subtitle">จัดการบัญชีผู้จัดการและพนักงานในร้าน</p></div></section>
+          @if (canManage) {
+            <section class="users-workspace">
+              <header class="users-toolbar">
+                <div><strong>บัญชีในร้าน</strong><span>{{ users.length }} บัญชี</span></div>
+                <button class="primary-button" type="button" (click)="openUserCreate()">＋ เพิ่มผู้ใช้</button>
+              </header>
+              <div class="users-table-wrap">
+                <table class="users-table" aria-label="บัญชีผู้ใช้ในร้าน">
+                  <thead><tr><th>อีเมล</th><th>บทบาท</th><th>สถานะ</th><th class="users-actions-heading">จัดการ</th></tr></thead>
+                  <tbody>
+                    @if (users.length) {
+                      @for (user of users; track user.id) {
+                        <tr>
+                          <td class="users-email">{{ user.email }}</td>
+                          <td>{{ user.role === 'Owner' ? 'เจ้าของร้าน' : user.role === 'Manager' ? 'ผู้จัดการ' : 'พนักงาน' }}</td>
+                          <td><span class="status" [class.confirmed]="user.isActive">{{ user.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span></td>
+                          <td class="users-row-actions">
+                            <button class="users-manage-button" type="button" (click)="editUser(user)" [disabled]="busy || (user.role === 'Owner' && currentUserRole !== 'Owner')" [title]="user.role === 'Owner' && currentUserRole !== 'Owner' ? 'เฉพาะเจ้าของร้านแก้ไขบัญชีเจ้าของร้านได้' : ''">แก้ไข</button>
+                            <button class="users-delete-button" type="button" (click)="openUserDeleteConfirm(user)" [disabled]="busy">ลบ</button>
+                            @if (user.role !== 'Owner' && user.id !== currentUserId) {
+                              <button type="button" (click)="toggleUserActive(user)" [disabled]="busy">{{ user.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน' }}</button>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    } @else {
+                      <tr><td class="users-empty" colspan="4">ยังไม่มีบัญชีผู้ใช้อื่นในร้าน</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            @if (userDialogOpen) {
+              <div class="user-dialog-backdrop" (click)="closeUserDialog()">
+                <section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="user-dialog-title" (click)="$event.stopPropagation()">
+                  <button class="dialog-close" type="button" aria-label="ปิด" (click)="closeUserDialog()">×</button>
+                  <p class="eyebrow">USER ACCOUNT</p>
+                  <h2 id="user-dialog-title">{{ editingUserId ? 'แก้ไขบัญชีผู้ใช้' : 'เพิ่มบัญชีผู้ใช้' }}</h2>
+                  <p class="user-dialog-description">กำหนดอีเมลและบทบาทการใช้งานในร้าน</p>
+                  <form class="form-stack" (ngSubmit)="saveUser()">
+                    <label>อีเมล<input name="userEmail" type="email" [(ngModel)]="userForm.email" required maxlength="254" autocomplete="username"></label>
+                    <label>รหัสผ่าน{{ editingUserId ? 'ใหม่ (เว้นว่างหากไม่เปลี่ยน)' : 'เริ่มต้น' }}<input name="userPassword" type="password" [(ngModel)]="userForm.password" [required]="!editingUserId" minlength="12" autocomplete="new-password"></label>
+                    @if (userForm.role === 'Owner') {
+                      <label>บทบาท<input name="userOwnerRole" value="เจ้าของร้าน" disabled></label>
+                    } @else {
+                      <label>บทบาท<ng-select name="userRole" [(ngModel)]="userForm.role" [disabled]="editingUserId === currentUserId" [clearable]="false" [searchable]="false"><ng-option value="Staff">พนักงาน</ng-option><ng-option value="Manager">ผู้จัดการ</ng-option></ng-select></label>
+                    }
+                    @if (errorMessage) { <div class="error-banner" role="alert">{{ errorMessage }}</div> }
+                    <div class="form-actions"><button class="primary-button" type="submit" [disabled]="busy">{{ editingUserId ? 'บันทึกการแก้ไข' : 'สร้างบัญชี' }}</button><button class="customer-cancel-button" type="button" (click)="closeUserDialog()">ยกเลิก</button></div>
+                  </form>
+                </section>
+              </div>
+            }
+            @if (userDeleteTarget; as deleteTarget) {
+              <div class="user-dialog-backdrop" (click)="cancelUserDelete()">
+                <section class="user-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="user-delete-title" (click)="$event.stopPropagation()">
+                  <span class="user-delete-icon" aria-hidden="true">!</span>
+                  <h2 id="user-delete-title">ยืนยันการลบบัญชี</h2>
+                  <p>ต้องการลบบัญชี <strong>{{ deleteTarget.email }}</strong> หรือไม่? การลบนี้ไม่สามารถย้อนกลับได้</p>
+                  @if (deleteTarget.role === 'Owner' || deleteTarget.id === currentUserId) {
+                    <div class="error-banner" role="status">{{ deleteTarget.role === 'Owner' ? 'ไม่สามารถลบบัญชีเจ้าของร้านได้' : 'ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่ได้' }}</div>
+                  }
+                  @if (errorMessage) { <div class="error-banner" role="alert">{{ errorMessage }}</div> }
+                  <div class="user-delete-actions">
+                    <button class="customer-cancel-button" type="button" (click)="cancelUserDelete()" [disabled]="busy">ยกเลิก</button>
+                    <button class="user-delete-confirm-button" type="button" (click)="confirmDeleteUser()" [disabled]="busy || deleteTarget.role === 'Owner' || deleteTarget.id === currentUserId">{{ busy ? 'กำลังลบ…' : 'ยืนยันลบ' }}</button>
+                  </div>
+                </section>
+              </div>
+            }
           } @else {
             <section class="panel"><div class="empty-state">เฉพาะเจ้าของร้านหรือผู้จัดการเท่านั้นที่จัดการบัญชีผู้ใช้ได้</div></section>
           }

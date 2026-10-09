@@ -26,9 +26,12 @@ export interface StaffMember {
   isActive: boolean;
 }
 
+export type CustomerType = 'VIP' | 'สมาชิก' | 'ลูกค้าใหม่' | 'ทั่วไป';
+
 export interface Customer {
   id: string;
   name: string;
+  type: CustomerType;
   email: string | null;
   phone: string | null;
   notes: string | null;
@@ -174,6 +177,14 @@ export class MassageApi {
     return firstValueFrom(this.http.post<TenantUser>('/api/users', value, this.options()));
   }
 
+  updateUser(id: string, value: { email: string; role: 'Owner' | 'Manager' | 'Staff'; password?: string }): Promise<TenantUser> {
+    return firstValueFrom(this.http.put<TenantUser>(`/api/users/${id}`, value, this.options()));
+  }
+
+  deleteUser(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/users/${id}`, this.options()));
+  }
+
   setUserActive(id: string, isActive: boolean): Promise<void> {
     return firstValueFrom(this.http.patch<void>(`/api/users/${id}/active`, { isActive }, this.options()));
   }
@@ -257,6 +268,10 @@ export class MassageApi {
     return firstValueFrom(this.http.delete<void>(`/api/staff/${id}`, this.options()));
   }
 
+  setStaffActive(id: string, isActive: boolean): Promise<void> {
+    return firstValueFrom(this.http.patch<void>(`/api/staff/${id}/active`, { isActive }, this.options()));
+  }
+
   createRoom(value: { branchId: string; name: string }): Promise<Room> {
     return firstValueFrom(this.http.post<Room>('/api/rooms', value, this.options()));
   }
@@ -269,11 +284,11 @@ export class MassageApi {
     return firstValueFrom(this.http.delete<void>(`/api/rooms/${id}`, this.options()));
   }
 
-  createCustomer(value: { name: string; email: string; phone: string; notes: string }): Promise<Customer> {
+  createCustomer(value: { name: string; email: string; phone: string; notes: string; type: CustomerType }): Promise<Customer> {
     return firstValueFrom(this.http.post<Customer>('/api/customers', value, this.options()));
   }
 
-  updateCustomer(id: string, value: { name: string; email: string; phone: string; notes: string }): Promise<Customer> {
+  updateCustomer(id: string, value: { name: string; email: string; phone: string; notes: string; type: CustomerType }): Promise<Customer> {
     return firstValueFrom(this.http.put<Customer>(`/api/customers/${id}`, value, this.options()));
   }
 

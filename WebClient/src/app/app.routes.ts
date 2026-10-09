@@ -6,6 +6,7 @@ export const routes: Routes = [
   { path: 'overview', component: MenuRoute, data: { section: 'overview' } },
   { path: 'pos', component: MenuRoute, data: { section: 'pos' } },
   { path: 'booking', component: MenuRoute, data: { section: 'booking' } },
+  { path: 'orders', component: MenuRoute, data: { section: 'orders' } },
   { path: 'rooms', component: MenuRoute, data: { section: 'rooms' } },
   { path: 'appointments', component: MenuRoute, data: { section: 'appointments' } },
   { path: 'services', component: MenuRoute, data: { section: 'services' } },

@@ -55,6 +55,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options) :
             e.Property(x => x.Name).HasMaxLength(160).IsRequired();
             e.Property(x => x.Email).HasMaxLength(254);
             e.Property(x => x.Phone).HasMaxLength(40);
+            e.Property(x => x.Type).HasMaxLength(24).HasDefaultValue("\u0e17\u0e31\u0e48\u0e27\u0e44\u0e1b").IsRequired();
         });
         modelBuilder.Entity<Room>(e =>
         {
@@ -188,6 +189,7 @@ public sealed class Customer
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string? Notes { get; set; }
+    public string Type { get; set; } = "\u0e17\u0e31\u0e48\u0e27\u0e44\u0e1b";
 }
 
 public sealed class Room

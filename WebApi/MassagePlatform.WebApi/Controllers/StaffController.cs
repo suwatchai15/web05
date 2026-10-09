@@ -36,6 +36,17 @@ public sealed class StaffController(TenantDbContext db) : ControllerBase
         return Ok(staff);
     }
 
+    [HttpPatch("{id:guid}/active")]
+    [Authorize(Roles = "Owner,Manager")]
+    public async Task<IActionResult> SetActive(Guid id, SetStaffActiveRequest request, CancellationToken ct)
+    {
+        var staff = await db.Staff.FindAsync([id], ct);
+        if (staff is null) return NotFound();
+        staff.IsActive = request.IsActive;
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Owner,Manager")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
@@ -50,3 +61,5 @@ public sealed class StaffController(TenantDbContext db) : ControllerBase
 
 public sealed record StaffRequest(Guid BranchId, [Required, StringLength(160, MinimumLength = 1)] string Name,
     [EmailAddress, StringLength(254)] string? Email);
+
+public sealed record SetStaffActiveRequest(bool IsActive);

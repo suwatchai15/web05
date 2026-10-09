@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using MassagePlatform.WebApi.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ namespace MassagePlatform.WebApi.Controllers;
 public sealed class SalesController(TenantDbContext db) : ControllerBase
 {
     private static readonly HashSet<string> PaymentMethods = ["Cash", "BankTransfer", "Card"];
+    private const long SaleNumberLockKey = 0x53414c4553455249L;
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<SaleResponse>>> List(
@@ -46,7 +48,11 @@ public sealed class SalesController(TenantDbContext db) : ControllerBase
         if (!PaymentMethods.Contains(request.PaymentMethod))
             return BadRequest(new { error = "PaymentMethod must be Cash, BankTransfer, or Card." });
 
-        if (!await db.Branches.AnyAsync(x => x.Id == request.BranchId && x.IsActive, ct))
+        var branchTimeZoneId = await db.Branches.AsNoTracking()
+            .Where(x => x.Id == request.BranchId && x.IsActive)
+            .Select(x => x.TimeZone)
+            .SingleOrDefaultAsync(ct);
+        if (branchTimeZoneId is null)
             return BadRequest(new { error = "Active branch not found." });
         if (request.CustomerId.HasValue && !await db.Customers.AnyAsync(x => x.Id == request.CustomerId.Value, ct))
             return BadRequest(new { error = "Customer not found." });
@@ -97,9 +103,12 @@ public sealed class SalesController(TenantDbContext db) : ControllerBase
         var subtotal = items.Sum(x => x.LineTotal);
         if (subtotal > 99_999_999.99m)
             return BadRequest(new { error = "Sale total exceeds the supported amount." });
+        var createdAt = DateTimeOffset.UtcNow;
+        var businessDate = TimeZoneInfo.ConvertTime(createdAt, ResolveTimeZone(branchTimeZoneId)).ToString("yyMMdd", CultureInfo.InvariantCulture);
+        var saleNumberPrefix = $"S-{businessDate}-";
         var sale = new PosSale
         {
-            SaleNumber = $"S-{DateTimeOffset.UtcNow:yyMMdd}-{Guid.NewGuid():N}",
+            CreatedAt = createdAt,
             BranchId = request.BranchId,
             CustomerId = request.CustomerId,
             StaffId = request.StaffId,
@@ -110,18 +119,50 @@ public sealed class SalesController(TenantDbContext db) : ControllerBase
             Total = subtotal,
             Items = items
         };
-        db.Sales.Add(sale);
         if (appointment is not null) appointment.PaidSaleId = sale.Id;
-        try
+        await using (var transaction = await db.Database.BeginTransactionAsync(ct))
         {
-            await db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_Sales_AppointmentId" })
-        {
-            return Conflict(new { error = "This appointment has already been paid." });
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({SaleNumberLockKey})", ct);
+            var existingNumbers = await db.Sales.AsNoTracking()
+                .Where(x => x.SaleNumber.StartsWith(saleNumberPrefix))
+                .Select(x => x.SaleNumber)
+                .ToListAsync(ct);
+            var nextNumber = existingNumbers
+                .Select(number => int.TryParse(number.AsSpan(saleNumberPrefix.Length), NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var sequence) ? sequence : 0)
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+            sale.SaleNumber = $"{saleNumberPrefix}{nextNumber:D4}";
+            db.Sales.Add(sale);
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+            }
+            catch (DbUpdateException exception) when (
+                exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_Sales_AppointmentId" })
+            {
+                return Conflict(new { error = "This appointment has already been paid." });
+            }
         }
         return CreatedAtAction(nameof(Get), new { id = sale.Id }, ToResponse(sale));
+    }
+
+    private static TimeZoneInfo ResolveTimeZone(string timeZoneId)
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.Utc;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.Utc;
+        }
     }
 
     private static SaleResponse ToResponse(PosSale sale) => new(

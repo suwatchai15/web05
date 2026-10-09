@@ -8,6 +8,7 @@ import {
   Appointment,
   Branch,
   Customer,
+  CustomerType,
   DemoDataStatus,
   MassageApi,
   MassageService,
@@ -20,8 +21,8 @@ import {
   WorkShift,
 } from './massage-api';
 
-type Section = 'overview' | 'pos' | 'booking' | 'rooms' | 'appointments' | 'services' | 'team' | 'customers' | 'branches' | 'users';
-type IconName = 'layout-dashboard' | 'shopping-bag' | 'calendar-days' | 'door-open' | 'calendar-plus' | 'sparkles' | 'users-round' | 'contact-round' | 'map-pinned' | 'user-round' | 'wallet' | 'users';
+type Section = 'overview' | 'pos' | 'booking' | 'orders' | 'rooms' | 'appointments' | 'services' | 'team' | 'customers' | 'branches' | 'users';
+type IconName = 'layout-dashboard' | 'shopping-bag' | 'calendar-days' | 'clipboard-list' | 'door-open' | 'calendar-plus' | 'sparkles' | 'users-round' | 'contact-round' | 'map-pinned' | 'user-round' | 'wallet' | 'users';
 type PosCategory = 'all' | 'thai' | 'aroma' | 'spa' | 'package';
 type PosCartItem = { service: MassageService; quantity: number };
 type RoomBoardFilter = 'all' | 'available' | 'busy' | 'booked' | 'disabled';
@@ -37,10 +38,11 @@ export class App implements OnInit {
     { id: 'overview', label: 'ภาพรวม', icon: 'layout-dashboard' },
     { id: 'pos', label: 'POS / ขาย', icon: 'shopping-bag' },
     { id: 'booking', label: 'Booking', icon: 'calendar-days' },
+    { id: 'orders', label: 'Order', icon: 'clipboard-list' },
     { id: 'rooms', label: 'ห้อง / เตียง', icon: 'door-open' },
     { id: 'appointments', label: 'นัดหมายใหม่', icon: 'calendar-plus' },
     { id: 'services', label: 'บริการ', icon: 'sparkles' },
-    { id: 'team', label: 'ทีมหมอนวด', icon: 'users-round' },
+    { id: 'team', label: 'Therapist / พนักงาน', icon: 'users-round' },
     { id: 'customers', label: 'ลูกค้า', icon: 'contact-round' },
     { id: 'branches', label: 'จัดการสาขา', icon: 'map-pinned' },
     { id: 'users', label: 'บัญชีผู้ใช้', icon: 'user-round' },
@@ -49,6 +51,7 @@ export class App implements OnInit {
     'layout-dashboard': ['M3 3h7v9H3z', 'M14 3h7v5h-7z', 'M14 12h7v9h-7z', 'M3 16h7v5H3z'],
     'shopping-bag': ['M6 7V6a6 6 0 0 1 12 0v1', 'M4 7h16l1 14H3L4 7Z', 'M9 11v2a3 3 0 0 0 6 0v-2'],
     'calendar-days': ['M8 2v4', 'M16 2v4', 'M3 10h18', 'M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z', 'M8 14h.01', 'M12 14h.01', 'M16 14h.01', 'M8 18h.01', 'M12 18h.01'],
+    'clipboard-list': ['M9 5h6', 'M9 3h6v4H9z', 'M7 5H5v16h14V5h-2', 'M9 12h6', 'M9 16h6'],
     'door-open': ['M13 4l7-2v20l-7-2', 'M13 4v16', 'M3 12h11', 'm10 9 4 3-4 3', 'M17 12h.01'],
     'calendar-plus': ['M8 2v4', 'M16 2v4', 'M3 10h18', 'M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z', 'M12 14v6', 'M9 17h6'],
     sparkles: ['m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3Z', 'm19 14 1.2 2.8L23 18l-2.8 1.2L19 22l-1.2-2.8L15 18l2.8-1.2L19 14Z', 'm5 2 .8 2.2L8 5l-2.2.8L5 8l-.8-2.2L2 5l2.2-.8L5 2Z'],
@@ -107,8 +110,11 @@ export class App implements OnInit {
   protected roomBoardFilter: RoomBoardFilter = 'all';
   protected roomCreateOpen = false;
   protected customerSearch = '';
+  protected customerFilter: 'all' | CustomerType = 'all';
+  protected readonly customerTypes: CustomerType[] = ['VIP', 'สมาชิก', 'ลูกค้าใหม่', 'ทั่วไป'];
   private customerSearchSequence = 0;
   protected customerCreateOpen = false;
+  protected customerDeleteTarget: Customer | null = null;
   protected readonly posCategories: { id: PosCategory; label: string }[] = [
     { id: 'all', label: 'ทั้งหมด' },
     { id: 'thai', label: 'นวดไทย' },
@@ -128,6 +134,10 @@ export class App implements OnInit {
   protected paymentDialogOpen = false;
   protected receiptDialogOpen = false;
   protected posSales: Sale[] = [];
+  protected orderSales: Sale[] = [];
+  protected get orderSalesTotal(): number {
+    return this.orderSales.reduce((total, sale) => total + sale.total, 0);
+  }
   protected lastPosSale: Sale | null = null;
   protected demoDataStatus: DemoDataStatus | null = null;
   protected demoSeedMessage = '';
@@ -147,17 +157,30 @@ export class App implements OnInit {
   protected serviceForm = { name: '', durationMinutes: 60, price: 0 };
   protected staffForm = { branchId: '', name: '', email: '' };
   protected roomForm = { branchId: '', name: '' };
-  protected customerForm = { name: '', email: '', phone: '', notes: '' };
-  protected userForm: { email: string; password: string; role: 'Manager' | 'Staff' } = {
+  protected customerForm = { name: '', email: '', phone: '', notes: '', type: 'ลูกค้าใหม่' as CustomerType };
+  protected userForm: { email: string; password: string; role: 'Owner' | 'Manager' | 'Staff' } = {
     email: '',
     password: '',
     role: 'Staff',
   };
+  protected userDialogOpen = false;
+  protected userDeleteTarget: TenantUser | null = null;
   protected editingBranchId = '';
+  protected branchFormDialogOpen = false;
+  protected branchDeleteTarget: Branch | null = null;
   protected editingServiceId = '';
+  protected serviceFormDialogOpen = false;
+  protected serviceDeleteTarget: MassageService | null = null;
   protected editingStaffId = '';
+  protected staffFormDialogOpen = false;
+  protected staffDeleteTarget: StaffMember | null = null;
+  protected teamTab: 'staff' | 'rooms' | 'schedule' = 'staff';
+  protected staffSearch = '';
+  protected roomFormDialogOpen = false;
+  protected roomDeleteTarget: Room | null = null;
   protected editingRoomId = '';
   protected editingCustomerId = '';
+  protected editingUserId = '';
 
   constructor(
     private readonly api: MassageApi,
@@ -198,15 +221,18 @@ export class App implements OnInit {
 
   protected get filteredCustomers(): Customer[] {
     const query = this.customerSearch.trim().toLocaleLowerCase();
-    return query ? this.customerSearchResults : this.customers;
+    const results = query ? this.customerSearchResults : this.customers;
+    return results.filter((customer) => {
+      return this.customerFilter === 'all' || customer.type === this.customerFilter;
+    });
   }
 
   protected get customersWithPhone(): number {
     return this.customers.filter((customer) => !!customer.phone?.trim()).length;
   }
 
-  protected get customersWithEmail(): number {
-    return this.customers.filter((customer) => !!customer.email?.trim()).length;
+  protected get customerMemberCount(): number {
+    return this.customers.filter((customer) => customer.type === 'สมาชิก' || customer.type === 'VIP').length;
   }
 
   protected get customersToday(): number {
@@ -391,6 +417,13 @@ export class App implements OnInit {
     return this.rooms.filter((room) => room.branchId === this.selectedBranchId);
   }
 
+
+  protected get filteredStaff(): StaffMember[] {
+    const query = this.staffSearch.trim().toLocaleLowerCase();
+    return this.staffInSelectedBranch.filter((member) =>
+      !query || `${member.name} ${member.email ?? ''}`.toLocaleLowerCase().includes(query),
+    );
+  }
   protected get staffInSelectedBranch(): StaffMember[] {
     return this.staff.filter((member) => member.branchId === this.selectedBranchId);
   }
@@ -443,6 +476,7 @@ export class App implements OnInit {
         ]);
       });
       if (this.activeSection === 'pos') await this.loadPosSales();
+      if (this.activeSection === 'orders') await this.loadOrders();
     }
   }
 
@@ -470,11 +504,37 @@ export class App implements OnInit {
     });
   }
 
-  protected async createUser(): Promise<void> {
+  protected openUserCreate(): void {
+    this.errorMessage = '';
+    this.editingUserId = '';
+    this.userForm = { email: '', password: '', role: 'Staff' };
+    this.userDialogOpen = true;
+  }
+
+  protected editUser(user: TenantUser): void {
+    this.errorMessage = '';
+    this.editingUserId = user.id;
+    this.userForm = { email: user.email, password: '', role: user.role };
+    this.userDialogOpen = true;
+  }
+
+  protected closeUserDialog(): void {
+    this.errorMessage = '';
+    this.userDialogOpen = false;
+    this.editingUserId = '';
+    this.userForm = { email: '', password: '', role: 'Staff' };
+  }
+
+  protected async saveUser(): Promise<void> {
     await this.run(async () => {
-      await this.api.createUser(this.userForm);
-      this.userForm = { email: '', password: '', role: 'Staff' };
+      if (this.editingUserId) {
+        const update = { email: this.userForm.email, role: this.userForm.role, ...(this.userForm.password ? { password: this.userForm.password } : {}) };
+        await this.api.updateUser(this.editingUserId, update);
+      } else {
+        await this.api.createUser({ ...this.userForm, role: this.userForm.role as 'Manager' | 'Staff' });
+      }
       this.users = await this.api.users();
+      this.closeUserDialog();
     });
   }
 
@@ -483,6 +543,25 @@ export class App implements OnInit {
       await this.api.setUserActive(user.id, !user.isActive);
       this.users = await this.api.users();
     });
+  }
+
+  protected openUserDeleteConfirm(user: TenantUser): void {
+    this.errorMessage = '';
+    this.userDeleteTarget = user;
+  }
+
+  protected cancelUserDelete(): void {
+    if (!this.busy) this.userDeleteTarget = null;
+  }
+
+  protected async confirmDeleteUser(): Promise<void> {
+    const user = this.userDeleteTarget;
+    if (!user || user.role === 'Owner' || user.id === this.currentUserId) return;
+    const error = await this.run(async () => {
+      await this.api.deleteUser(user.id);
+      this.users = await this.api.users();
+    });
+    if (error === null) this.userDeleteTarget = null;
   }
 
   protected async setBookingDate(value: string): Promise<void> {
@@ -784,6 +863,15 @@ export class App implements OnInit {
     return labels[this.roomStatus(room)];
   }
 
+  protected roomTimeRemaining(appointment: Appointment): string {
+    const now = Date.now();
+    const startsAt = new Date(appointment.startsAt).getTime();
+    if (startsAt > now) return `${this.timeLabel(appointment.startsAt)} น.`;
+    const minutes = Math.max(0, Math.ceil((new Date(appointment.endsAt).getTime() - now) / 60_000));
+    if (minutes < 1) return 'ใกล้เสร็จ';
+    return `เหลือ ${minutes} นาที`;
+  }
+
   protected roomCurrentAppointment(room: Room): Appointment | undefined {
     const now = Date.now();
     return this.roomAppointments
@@ -863,10 +951,11 @@ export class App implements OnInit {
         ]);
       }
 
-      protected get pendingPosAppointment(): Appointment | undefined {
-        return this.bookingAppointments.find((appointment) => appointment.id === this.pendingPosAppointmentId);
-      }
     });
+  }
+
+  protected get pendingPosAppointment(): Appointment | undefined {
+    return this.bookingAppointments.find((appointment) => appointment.id === this.pendingPosAppointmentId);
   }
 
   protected printReceipt(): void {
@@ -890,6 +979,21 @@ export class App implements OnInit {
     to.setDate(to.getDate() + 1);
     await this.run(async () => {
       this.posSales = await this.api.sales(from.toISOString(), to.toISOString(), this.selectedBranchId);
+    });
+  }
+
+  protected async loadOrdersForDate(date: string): Promise<void> {
+    if (!date) return;
+    this.selectedDate = date;
+    await this.loadOrders();
+  }
+
+  protected async loadOrders(): Promise<void> {
+    const from = new Date(`${this.selectedDate}T00:00:00`);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 1);
+    await this.run(async () => {
+      this.orderSales = await this.api.sales(from.toISOString(), to.toISOString(), this.selectedBranchId);
     });
   }
 
@@ -1051,6 +1155,7 @@ export class App implements OnInit {
       if (this.editingBranchId) await this.api.updateBranch(this.editingBranchId, this.branchForm);
       this.branchForm = { name: '', address: '', timeZone: 'Asia/Bangkok' };
       this.editingBranchId = '';
+      this.branchFormDialogOpen = false;
       await this.loadWorkspace();
       if (createdBranch) {
         this.pendingBranchId = createdBranch.id;
@@ -1063,19 +1168,45 @@ export class App implements OnInit {
   protected editBranch(branch: Branch): void {
     this.editingBranchId = branch.id;
     this.branchForm = { name: branch.name, address: branch.address ?? '', timeZone: branch.timeZone };
+    this.branchFormDialogOpen = true;
   }
 
-  protected async deleteBranch(branch: Branch): Promise<void> {
-    await this.run(async () => {
+  protected openBranchCreate(): void {
+    this.errorMessage = '';
+    this.editingBranchId = '';
+    this.branchForm = { name: '', address: '', timeZone: 'Asia/Bangkok' };
+    this.branchFormDialogOpen = true;
+  }
+
+  protected closeBranchForm(): void {
+    this.branchFormDialogOpen = false;
+    this.editingBranchId = '';
+    this.branchForm = { name: '', address: '', timeZone: 'Asia/Bangkok' };
+    this.errorMessage = '';
+  }
+
+  protected openBranchDeleteConfirm(branch: Branch): void {
+    this.errorMessage = '';
+    this.branchDeleteTarget = branch;
+  }
+
+  protected cancelBranchDelete(): void {
+    if (!this.busy) this.branchDeleteTarget = null;
+  }
+
+  protected async confirmDeleteBranch(): Promise<void> {
+    const branch = this.branchDeleteTarget;
+    if (!branch) return;
+    const error = await this.run(async () => {
       await this.api.deleteBranch(branch.id);
       if (this.posBranchId === branch.id) this.posBranchId = '';
       await this.loadWorkspace();
     });
+    if (error === null) this.branchDeleteTarget = null;
   }
 
   protected cancelBranchEdit(): void {
-    this.editingBranchId = '';
-    this.branchForm = { name: '', address: '', timeZone: 'Asia/Bangkok' };
+    this.closeBranchForm();
   }
 
   protected branchChanged(): void {
@@ -1093,18 +1224,37 @@ export class App implements OnInit {
       else await this.api.createService(this.serviceForm);
       this.serviceForm = { name: '', durationMinutes: 60, price: 0 };
       this.editingServiceId = '';
+      this.serviceFormDialogOpen = false;
       await this.loadWorkspace();
     });
+  }
+
+  protected openServiceCreate(): void {
+    this.cancelServiceEdit();
+    this.serviceFormDialogOpen = true;
   }
 
   protected editService(service: MassageService): void {
     this.editingServiceId = service.id;
     this.serviceForm = { name: service.name, durationMinutes: service.durationMinutes, price: service.price };
+    this.serviceFormDialogOpen = true;
   }
 
-  protected async deleteService(service: MassageService): Promise<void> {
+  protected closeServiceForm(): void {
+    this.serviceFormDialogOpen = false;
+    this.cancelServiceEdit();
+  }
+
+  protected cancelServiceDelete(): void {
+    this.serviceDeleteTarget = null;
+  }
+
+  protected async confirmDeleteService(): Promise<void> {
+    const service = this.serviceDeleteTarget;
+    if (!service) return;
     await this.run(async () => {
       await this.api.deleteService(service.id);
+      this.serviceDeleteTarget = null;
       await this.loadWorkspace();
     });
   }
@@ -1115,24 +1265,51 @@ export class App implements OnInit {
   }
 
   protected async createStaff(): Promise<void> {
-    await this.run(async () => {
+    const error = await this.run(async () => {
       if (this.editingStaffId) await this.api.updateStaff(this.editingStaffId, this.staffForm);
       else await this.api.createStaff(this.staffForm);
       this.staffForm = { branchId: '', name: '', email: '' };
       this.editingStaffId = '';
+      this.staffFormDialogOpen = false;
       await this.loadWorkspace();
     });
+  }
+
+  protected openStaffCreate(): void {
+    this.cancelStaffEdit();
+    this.staffForm.branchId = this.selectedBranchId;
+    this.staffFormDialogOpen = true;
   }
 
   protected editStaff(member: StaffMember): void {
     this.editingStaffId = member.id;
     this.staffForm = { branchId: member.branchId, name: member.name, email: member.email ?? '' };
+    this.staffFormDialogOpen = true;
   }
 
-  protected async deactivateStaff(member: StaffMember): Promise<void> {
-    await this.run(async () => {
+  protected closeStaffForm(): void {
+    this.staffFormDialogOpen = false;
+    this.cancelStaffEdit();
+  }
+
+  protected cancelStaffDelete(): void {
+    this.staffDeleteTarget = null;
+  }
+
+  protected async confirmDeactivateStaff(): Promise<void> {
+    const member = this.staffDeleteTarget;
+    if (!member) return;
+    const error = await this.run(async () => {
       await this.api.deactivateStaff(member.id);
       if (this.scheduleStaffId === member.id) await this.selectScheduleStaff('');
+      this.staffDeleteTarget = null;
+      await this.loadWorkspace();
+    });
+  }
+
+  protected async reactivateStaff(member: StaffMember): Promise<void> {
+    await this.run(async () => {
+      await this.api.setStaffActive(member.id, true);
       await this.loadWorkspace();
     });
   }
@@ -1223,20 +1400,40 @@ export class App implements OnInit {
       else await this.api.createRoom(this.roomForm);
       this.roomForm = { branchId: '', name: '' };
       this.editingRoomId = '';
+      this.roomFormDialogOpen = false;
       this.roomCreateOpen = false;
       await this.loadWorkspace();
       await this.reloadRoomAppointments();
     });
   }
 
+  protected openRoomCreate(): void {
+    this.cancelRoomEdit();
+    this.roomForm.branchId = this.selectedBranchId;
+    this.roomFormDialogOpen = true;
+  }
+
   protected editRoom(room: Room): void {
     this.editingRoomId = room.id;
     this.roomForm = { branchId: room.branchId, name: room.name };
+    this.roomFormDialogOpen = true;
   }
 
-  protected async deactivateRoom(room: Room): Promise<void> {
+  protected closeRoomForm(): void {
+    this.roomFormDialogOpen = false;
+    this.cancelRoomEdit();
+  }
+
+  protected cancelRoomDelete(): void {
+    this.roomDeleteTarget = null;
+  }
+
+  protected async confirmDeactivateRoom(): Promise<void> {
+    const room = this.roomDeleteTarget;
+    if (!room) return;
     await this.run(async () => {
       await this.api.deactivateRoom(room.id);
+      this.roomDeleteTarget = null;
       await this.loadWorkspace();
       await this.reloadRoomAppointments();
     });
@@ -1251,7 +1448,7 @@ export class App implements OnInit {
     await this.run(async () => {
       if (this.editingCustomerId) await this.api.updateCustomer(this.editingCustomerId, this.customerForm);
       else await this.api.createCustomer(this.customerForm);
-      this.customerForm = { name: '', email: '', phone: '', notes: '' };
+      this.customerForm = { name: '', email: '', phone: '', notes: '', type: 'ลูกค้าใหม่' };
       this.editingCustomerId = '';
       await this.loadWorkspace();
       this.customerCreateOpen = false;
@@ -1259,27 +1456,53 @@ export class App implements OnInit {
   }
 
   protected editCustomer(customer: Customer): void {
+    this.errorMessage = '';
     this.editingCustomerId = customer.id;
     this.customerForm = {
       name: customer.name,
       email: customer.email ?? '',
       phone: customer.phone ?? '',
       notes: customer.notes ?? '',
+      type: customer.type ?? 'ทั่วไป',
     };
     this.customerCreateOpen = true;
   }
 
-  protected async deleteCustomer(customer: Customer): Promise<void> {
-    await this.run(async () => {
+  protected openCustomerCreate(): void {
+    this.errorMessage = '';
+    this.editingCustomerId = '';
+    this.customerForm = { name: '', email: '', phone: '', notes: '', type: 'ลูกค้าใหม่' };
+    this.customerCreateOpen = true;
+  }
+
+  protected closeCustomerForm(): void {
+    this.customerCreateOpen = false;
+    this.editingCustomerId = '';
+    this.customerForm = { name: '', email: '', phone: '', notes: '', type: 'ลูกค้าใหม่' };
+    this.errorMessage = '';
+  }
+
+  protected openCustomerDeleteConfirm(customer: Customer): void {
+    this.errorMessage = '';
+    this.customerDeleteTarget = customer;
+  }
+
+  protected cancelCustomerDelete(): void {
+    if (!this.busy) this.customerDeleteTarget = null;
+  }
+
+  protected async confirmDeleteCustomer(): Promise<void> {
+    const customer = this.customerDeleteTarget;
+    if (!customer) return;
+    const error = await this.run(async () => {
       await this.api.deleteCustomer(customer.id);
       await this.loadWorkspace();
     });
+    if (error === null) this.customerDeleteTarget = null;
   }
 
   protected cancelCustomerEdit(): void {
-    this.editingCustomerId = '';
-    this.customerForm = { name: '', email: '', phone: '', notes: '' };
-    this.customerCreateOpen = false;
+    this.closeCustomerForm();
   }
 
   protected branchName(branchId: string): string {
@@ -1416,6 +1639,7 @@ export class App implements OnInit {
     if (!this.api.hasSession) return;
     if (section === 'overview' || section === 'appointments') void this.loadAppointments();
     if (section === 'booking') void this.loadBookingAppointments();
+    if (section === 'orders') void this.loadOrders();
     if (section === 'rooms') void this.loadRoomAppointments();
     if (section === 'pos') void this.loadPosSales();
     if (section === 'users') void this.loadUsers();

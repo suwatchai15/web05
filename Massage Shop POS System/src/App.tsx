@@ -169,98 +169,106 @@ const bookingEvents = [
 ];
 
 function BookingCalendar() {
-  const [shownMonth, setShownMonth] = useState(new Date(2025, 5, 1));
-  const [selectedDate, setSelectedDate] = useState("2025-06-18");
-  const [calendarView, setCalendarView] = useState("เดือน");
-  const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-  const month = shownMonth.getMonth();
-  const year = shownMonth.getFullYear();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysInPreviousMonth = new Date(year, month, 0).getDate();
-  const cells = Array.from({ length: 42 }, (_, index) => {
-    const calendarDate = index - firstDay + 1;
-    const date = calendarDate < 1
-      ? new Date(year, month - 1, daysInPreviousMonth + calendarDate)
-      : calendarDate > daysInMonth
-        ? new Date(year, month + 1, calendarDate - daysInMonth)
-        : new Date(year, month, calendarDate);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return { date, key, current: date.getMonth() === month };
-  });
-  const dayBookings = bookingEvents.filter((event) => event.date === selectedDate);
-  const selected = new Date(`${selectedDate}T12:00:00`);
+  type TimelineBooking = {
+    id: number; customer: string; service: string; staff: string; room: string;
+    start: number; duration: number; time: string; status: "reserved" | "started" | "waiting" | "done";
+  };
+  const initialTimelineBookings: TimelineBooking[] = [
+    { id: 1, customer: "วราภรณ์", service: "นวดไทย 60 นาที", staff: "น้ำฝน", room: "ห้อง 01", start: 2, duration: 2, time: "10:00–11:00", status: "started" },
+    { id: 2, customer: "ศิริพร", service: "นวดอโรม่า 90 นาที", staff: "พลอย", room: "ห้อง 02", start: 5, duration: 3, time: "11:30–13:00", status: "reserved" },
+    { id: 3, customer: "กิตติพงษ์", service: "นวดไทย 90 นาที", staff: "มะลิ", room: "ห้อง 03", start: 8, duration: 3, time: "13:00–14:30", status: "waiting" },
+    { id: 4, customer: "พรทิพย์", service: "นวดฝ่าเท้า 60 นาที", staff: "อรทัย", room: "ห้อง 05", start: 10, duration: 2, time: "14:00–15:00", status: "started" },
+    { id: 5, customer: "Rachel M.", service: "Aroma Massage", staff: "พลอย", room: "ห้อง 02", start: 13, duration: 2, time: "15:30–16:30", status: "done" },
+    { id: 6, customer: "ธนกร", service: "ประคบสมุนไพร", staff: "มะลิ", room: "ห้อง 04", start: 14, duration: 3, time: "16:00–17:30", status: "reserved" },
+    { id: 7, customer: "นภัสสร", service: "นวดไทย 60 นาที", staff: "น้ำฝน", room: "ห้อง 03", start: 15, duration: 2, time: "16:30–17:30", status: "reserved" },
+  ];
+  const blankBooking = { customer: "", service: "นวดไทย 60 นาที", staff: "น้ำฝน", room: "ห้อง 01", time: "10:00", status: "reserved" as TimelineBooking["status"] };
+  const [resourceView, setResourceView] = useState<"staff" | "room">("staff");
+  const [selectedDay, setSelectedDay] = useState(18);
+  const [timelineBookings, setTimelineBookings] = useState<TimelineBooking[]>(initialTimelineBookings);
+  const [bookingDraft, setBookingDraft] = useState<typeof blankBooking | null>(null);
+  const resources = resourceView === "staff"
+    ? [{ name: "น้ำฝน", detail: "นวดไทย · อโรมา" }, { name: "มะลิ", detail: "นวดไทย · สมุนไพร" }, { name: "พลอย", detail: "อโรมา · สครับ" }, { name: "อรทัย", detail: "นวดเท้า · นวดไทย" }, { name: "จิรา", detail: "นวดไทย · อโรมา" }]
+    : [{ name: "ห้อง 01", detail: "ห้องนวดไทย · 2 เตียง" }, { name: "ห้อง 02", detail: "ห้องอโรมา · 1 เตียง" }, { name: "ห้อง 03", detail: "ห้องนวดไทย · 2 เตียง" }, { name: "ห้อง 04", detail: "ห้องสมุนไพร · 1 เตียง" }, { name: "ห้อง 05", detail: "ห้องนวดเท้า · 3 ที่" }];
+  const statusLabel = { reserved: "จองแล้ว", started: "เริ่มแล้ว", waiting: "รอเริ่ม", done: "เสร็จแล้ว" };
+  const timeLabels = Array.from({ length: 19 }, (_, index) => `${String(9 + Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}`);
 
-  const moveMonth = (difference: number) => {
-    const next = new Date(year, month + difference, 1);
-    setShownMonth(next);
-    setSelectedDate(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`);
+  const saveBooking = () => {
+    if (!bookingDraft?.customer.trim()) return;
+    const [hour, minute] = bookingDraft.time.split(":").map(Number);
+    const start = Math.max(0, Math.min(17, (hour - 9) * 2 + (minute >= 30 ? 1 : 0)));
+    const duration = bookingDraft.service.includes("90") ? 3 : 2;
+    const endMinutes = hour * 60 + minute + duration * 30;
+    const end = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+    setTimelineBookings((current) => [...current, {
+      id: Math.max(0, ...current.map((booking) => booking.id)) + 1,
+      customer: bookingDraft.customer,
+      service: bookingDraft.service,
+      staff: bookingDraft.staff,
+      room: bookingDraft.room,
+      start,
+      duration,
+      time: `${bookingDraft.time}–${end}`,
+      status: bookingDraft.status,
+    }]);
+    setBookingDraft(null);
   };
 
   return (
-    <section className="booking-page">
-      <div className="booking-toolbar">
-        <div className="booking-stats">
-          <div><span>นัดหมายวันนี้</span><strong>12</strong><small>คิว</small></div>
-          <div><span>Check-in แล้ว</span><strong>7</strong><small>คิว</small></div>
-          <div><span>รอรับบริการ</span><strong>3</strong><small>คิว</small></div>
+    <section className="timeline-page">
+      <div className="timeline-toolbar">
+        <div className="resource-switch">
+          <button className={resourceView === "staff" ? "active" : ""} onClick={() => setResourceView("staff")}><Icon name="users" size={17} /> พนักงาน</button>
+          <button className={resourceView === "room" ? "active" : ""} onClick={() => setResourceView("room")}><Icon name="door" size={17} /> ห้อง / เตียง</button>
         </div>
-        <button className="new-booking"><Icon name="plus" /> นัดหมายใหม่</button>
+        <div className="timeline-date"><button onClick={() => setSelectedDay((day) => day - 1)}>‹</button><div><span>วันพุธ</span><strong>{selectedDay} มิถุนายน 2568</strong></div><button onClick={() => setSelectedDay((day) => day + 1)}>›</button><button onClick={() => setSelectedDay(18)}>วันนี้</button></div>
+        <button className="new-booking" onClick={() => setBookingDraft({ ...blankBooking })}><Icon name="plus" /> จองคิวใหม่</button>
       </div>
 
-      <div className="booking-layout">
-        <article className="calendar-card">
-          <div className="calendar-head">
-            <div className="month-switcher">
-              <button onClick={() => moveMonth(-1)}>‹</button>
-              <h2>{thaiMonths[month]} {year + 543}</h2>
-              <button onClick={() => moveMonth(1)}>›</button>
-              <button className="today-button" onClick={() => { setShownMonth(new Date(2025, 5, 1)); setSelectedDate("2025-06-18"); }}>วันนี้</button>
-            </div>
-            <div className="view-switcher">
-              {["เดือน", "สัปดาห์", "วัน"].map((view) => <button className={calendarView === view ? "active" : ""} onClick={() => setCalendarView(view)} key={view}>{view}</button>)}
-            </div>
-          </div>
-          <div className="weekday-row">{["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."].map((day) => <span key={day}>{day}</span>)}</div>
-          <div className="calendar-grid">
-            {cells.map((cell) => {
-              const events = bookingEvents.filter((event) => event.date === cell.key);
-              return (
-                <button className={`${cell.current ? "" : "outside"} ${selectedDate === cell.key ? "selected" : ""} ${cell.key === "2025-06-18" ? "today" : ""}`} key={cell.key} onClick={() => setSelectedDate(cell.key)}>
-                  <span>{cell.date.getDate()}</span>
-                  <div className="calendar-events">
-                    {events.slice(0, 2).map((event) => <i className={event.status} key={event.id}><b>{event.time}</b> {event.customer}</i>)}
-                    {events.length > 2 && <small>+{events.length - 2} นัดหมาย</small>}
-                  </div>
+      <div className="timeline-summary">
+        <span><b>{timelineBookings.length}</b> คิวทั้งหมด</span><span><i className="reserved" /> จองแล้ว {timelineBookings.filter((booking) => booking.status === "reserved").length}</span><span><i className="started" /> เริ่มแล้ว {timelineBookings.filter((booking) => booking.status === "started").length}</span><span><i className="waiting" /> ถึงเวลาเริ่ม {timelineBookings.filter((booking) => booking.status === "waiting").length}</span><span><i className="done" /> เสร็จแล้ว {timelineBookings.filter((booking) => booking.status === "done").length}</span>
+      </div>
+
+      <div className="resource-timeline">
+        <div className="timeline-corner"><span>{resourceView === "staff" ? "THERAPIST" : "ROOM / BED"}</span><strong>{resourceView === "staff" ? "พนักงานวันนี้" : "ห้องให้บริการ"}</strong></div>
+        <div className="timeline-times">{timeLabels.map((time) => <span key={time}>{time}</span>)}</div>
+        <div className="resource-list">
+          {resources.map((resource, index) => <div className="resource-person" key={resource.name}><div className={`resource-avatar tone-${index}`}>{resourceView === "staff" ? resource.name.slice(0, 1) : <Icon name="door" size={17} />}</div><div><strong>{resource.name}</strong><span>{resource.detail}</span></div><i className={index === 4 ? "away" : ""} /></div>)}
+        </div>
+        <div className="timeline-board">
+          <div className="now-line"><span>14:20</span></div>
+          {resources.map((resource) => (
+            <div className="timeline-row" key={resource.name} onDoubleClick={() => setBookingDraft({ ...blankBooking, [resourceView]: resource.name })}>
+              <div className="half-hour-grid">{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
+              {timelineBookings.filter((booking) => booking[resourceView] === resource.name).map((booking) => (
+                <button className={`timeline-event ${booking.status} slot-${booking.start} duration-${booking.duration}`} key={booking.id}>
+                  <strong>{booking.service}</strong>
+                  <span><Icon name="user" size={11} /> {booking.customer}</span>
+                  <small>{booking.time}<b>{statusLabel[booking.status]}</b></small>
                 </button>
-              );
-            })}
-          </div>
-        </article>
-
-        <aside className="day-agenda">
-          <div className="agenda-heading">
-            <span>ตารางนัดหมาย</span>
-            <h3>{selected.getDate()} {thaiMonths[selected.getMonth()]}</h3>
-            <p>{dayBookings.length} นัดหมาย · {dayBookings.reduce((total, event) => total + (event.service.includes("90") ? 90 : 60), 0)} นาที</p>
-          </div>
-          <div className="agenda-list">
-            {dayBookings.length ? dayBookings.map((event) => (
-              <button className="agenda-item" key={event.id}>
-                <time>{event.time}</time>
-                <div className={`agenda-line ${event.status}`} />
-                <div className="agenda-info">
-                  <div><strong>{event.customer}</strong><i className={event.status}>{event.status === "checked" ? "Check-in" : event.status === "confirmed" ? "ยืนยันแล้ว" : "รอยืนยัน"}</i></div>
-                  <span>{event.service}</span>
-                  <small><Icon name="user" size={13} /> {event.therapist}</small>
-                </div>
-              </button>
-            )) : <div className="no-bookings"><div><Icon name="calendar" /></div><strong>ไม่มีนัดหมาย</strong><span>วันนี้ยังไม่มีรายการจอง</span><button><Icon name="plus" size={15} /> เพิ่มนัดหมาย</button></div>}
-          </div>
-          {dayBookings.length > 0 && <button className="agenda-add"><Icon name="plus" size={16} /> เพิ่มนัดหมายในวันนี้</button>}
-        </aside>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="calendar-legend"><span><i className="checked" /> Check-in แล้ว</span><span><i className="confirmed" /> ยืนยันแล้ว</span><span><i className="waiting" /> รอยืนยัน</span></div>
+      <p className="timeline-tip">ดับเบิลคลิกบนช่องเวลาเพื่อเพิ่มคิว · สลับดูคิวตามพนักงานหรือห้องได้จากปุ่มด้านบน</p>
+
+      {bookingDraft && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setBookingDraft(null)}>
+        <div className="booking-modal">
+          <button className="modal-close" onClick={() => setBookingDraft(null)}><Icon name="close" /></button>
+          <p className="eyebrow">NEW BOOKING</p><h2>จองคิวใหม่</h2><span className="modal-subtitle">กรอกข้อมูลการจองและจัดสรรพนักงานกับห้อง</span>
+          <div className="booking-form">
+            <label className="full"><span>ชื่อลูกค้า</span><input autoFocus value={bookingDraft.customer} onChange={(event) => setBookingDraft({ ...bookingDraft, customer: event.target.value })} placeholder="ค้นหาหรือเพิ่มชื่อลูกค้า" /></label>
+            <label className="full"><span>บริการ</span><select value={bookingDraft.service} onChange={(event) => setBookingDraft({ ...bookingDraft, service: event.target.value })}><option>นวดไทย 60 นาที</option><option>นวดไทย 90 นาที</option><option>นวดอโรม่า 60 นาที</option><option>นวดอโรม่า 90 นาที</option><option>นวดฝ่าเท้า 60 นาที</option><option>ประคบสมุนไพร 90 นาที</option></select></label>
+            <label><span>วันที่</span><input type="date" defaultValue="2025-06-18" /></label>
+            <label><span>เวลาเริ่ม</span><select value={bookingDraft.time} onChange={(event) => setBookingDraft({ ...bookingDraft, time: event.target.value })}>{timeLabels.slice(0, 18).map((time) => <option key={time}>{time}</option>)}</select></label>
+            <label><span>Therapist</span><select value={bookingDraft.staff} onChange={(event) => setBookingDraft({ ...bookingDraft, staff: event.target.value })}>{["น้ำฝน", "มะลิ", "พลอย", "อรทัย", "จิรา"].map((staff) => <option key={staff}>{staff}</option>)}</select></label>
+            <label><span>ห้อง / เตียง</span><select value={bookingDraft.room} onChange={(event) => setBookingDraft({ ...bookingDraft, room: event.target.value })}>{["ห้อง 01", "ห้อง 02", "ห้อง 03", "ห้อง 04", "ห้อง 05"].map((room) => <option key={room}>{room}</option>)}</select></label>
+            <label className="full"><span>สถานะ</span><div className="booking-status-options">{(["reserved", "waiting"] as const).map((status) => <button className={bookingDraft.status === status ? "active" : ""} onClick={() => setBookingDraft({ ...bookingDraft, status })} key={status}><i className={status} />{status === "reserved" ? "ยืนยันการจอง" : "รอ Check-in"}</button>)}</div></label>
+          </div>
+          <div className="booking-modal-actions"><button onClick={() => setBookingDraft(null)}>ยกเลิก</button><button disabled={!bookingDraft.customer.trim()} onClick={saveBooking}><Icon name="calendar" size={16} /> ยืนยันการจอง</button></div>
+        </div>
+      </div>}
     </section>
   );
 }
@@ -394,6 +402,234 @@ function RoomsBoard() {
   );
 }
 
+
+function CustomerManagement() {
+  const blankCustomer: Customer = { id: 0, name: "", phone: "", email: "", visits: 0, spend: 0, points: 0, tag: "ลูกค้าใหม่", lastVisit: "ยังไม่เคยใช้บริการ" };
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState("ทั้งหมด");
+  const [customerDraft, setCustomerDraft] = useState<Customer | null>(null);
+  const filteredCustomers = customers.filter((customer) =>
+    (tagFilter === "ทั้งหมด" || customer.tag === tagFilter) &&
+    `${customer.name} ${customer.phone} ${customer.email}`.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  const saveCustomer = () => {
+    if (!customerDraft?.name.trim() || !customerDraft.phone.trim()) return;
+    if (customerDraft.id) {
+      setCustomers((current) => current.map((customer) => customer.id === customerDraft.id ? customerDraft : customer));
+    } else {
+      setCustomers((current) => [{ ...customerDraft, id: Math.max(0, ...current.map((customer) => customer.id)) + 1 }, ...current]);
+    }
+    setCustomerDraft(null);
+  };
+
+  return (
+    <section className="customers-page">
+      <div className="customer-overview">
+        <div><div className="customer-overview-icon"><Icon name="users" size={27} /></div><span>ลูกค้าทั้งหมด</span><strong>{customers.length.toLocaleString()} <small>คน</small></strong><p>เพิ่มขึ้น 12 คนในเดือนนี้</p></div>
+        <div><div className="customer-overview-icon"><Icon name="user" size={25} /></div><span>สมาชิก</span><strong>{customers.filter((customer) => customer.tag === "สมาชิก" || customer.tag === "VIP").length} <small>คน</small></strong><p>คิดเป็น 71% ของลูกค้าทั้งหมด</p></div>
+        <div><div className="customer-overview-icon">P</div><span>คะแนนสะสมรวม</span><strong>{customers.reduce((sum, customer) => sum + customer.points, 0).toLocaleString()}</strong><p>คะแนนที่ลูกค้ายังไม่ได้ใช้</p></div>
+      </div>
+
+      <div className="customer-panel">
+        <div className="customer-panel-head">
+          <div><h2>รายชื่อลูกค้า</h2><p>จัดการข้อมูล ประวัติ และสิทธิประโยชน์ของลูกค้า</p></div>
+          <button onClick={() => setCustomerDraft({ ...blankCustomer })}><Icon name="plus" size={17} /> เพิ่มลูกค้า</button>
+        </div>
+        <div className="customer-tools">
+          <div className="customer-search"><Icon name="search" size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาชื่อ เบอร์โทร หรืออีเมล..." /></div>
+          <div className="customer-filters">{["ทั้งหมด", "VIP", "สมาชิก", "ลูกค้าใหม่", "ทั่วไป"].map((tag) => <button className={tagFilter === tag ? "active" : ""} onClick={() => setTagFilter(tag)} key={tag}>{tag}</button>)}</div>
+          <span>{filteredCustomers.length} รายการ</span>
+        </div>
+        <div className="customer-table-wrap">
+          <table className="customer-table">
+            <thead><tr><th>ลูกค้า</th><th>ติดต่อ</th><th>ประเภท</th><th>เข้าใช้บริการ</th><th>ยอดใช้จ่าย</th><th>Point</th><th>ล่าสุด</th><th /></tr></thead>
+            <tbody>
+              {filteredCustomers.map((customer, index) => (
+                <tr key={customer.id}>
+                  <td><div className={`customer-avatar color-${index % 5}`}>{customer.name.slice(0, 1)}</div><div><strong>{customer.name}</strong><span>CM-{String(customer.id).padStart(4, "0")}</span></div></td>
+                  <td><strong>{customer.phone}</strong><span>{customer.email || "ไม่ระบุอีเมล"}</span></td>
+                  <td><i className={`customer-tag ${customer.tag === "ลูกค้าใหม่" ? "new" : customer.tag === "ทั่วไป" ? "normal" : customer.tag.toLowerCase()}`}>{customer.tag}</i></td>
+                  <td><strong>{customer.visits} ครั้ง</strong></td>
+                  <td><strong>฿{customer.spend.toLocaleString()}</strong></td>
+                  <td><strong className="customer-points">{customer.points.toLocaleString()}</strong></td>
+                  <td><span>{customer.lastVisit}</span></td>
+                  <td><button onClick={() => setCustomerDraft({ ...customer })} title="แก้ไขลูกค้า"><Icon name="edit" size={16} /></button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!filteredCustomers.length && <div className="customer-empty"><div><Icon name="users" /></div><strong>ไม่พบลูกค้า</strong><span>ลองเปลี่ยนตัวกรองหรือคำค้นหา</span></div>}
+        </div>
+      </div>
+
+      {customerDraft && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCustomerDraft(null)}>
+        <div className="customer-modal">
+          <button className="modal-close" onClick={() => setCustomerDraft(null)}><Icon name="close" /></button>
+          <p className="eyebrow">{customerDraft.id ? "EDIT CUSTOMER" : "NEW CUSTOMER"}</p>
+          <h2>{customerDraft.id ? "แก้ไขข้อมูลลูกค้า" : "เพิ่มลูกค้าใหม่"}</h2>
+          <span className="modal-subtitle">ข้อมูลนี้จะใช้สำหรับการจอง บันทึกประวัติ และสะสมคะแนน</span>
+          <div className="customer-form">
+            <label className="full"><span>ชื่อ–นามสกุล *</span><input autoFocus value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} placeholder="กรอกชื่อและนามสกุล" /></label>
+            <label><span>เบอร์โทรศัพท์ *</span><input value={customerDraft.phone} onChange={(event) => setCustomerDraft({ ...customerDraft, phone: event.target.value })} placeholder="08X-XXX-XXXX" /></label>
+            <label><span>อีเมล</span><input type="email" value={customerDraft.email} onChange={(event) => setCustomerDraft({ ...customerDraft, email: event.target.value })} placeholder="customer@email.com" /></label>
+            <label><span>ประเภทลูกค้า</span><select value={customerDraft.tag} onChange={(event) => setCustomerDraft({ ...customerDraft, tag: event.target.value as Customer["tag"] })}><option>ลูกค้าใหม่</option><option>ทั่วไป</option><option>สมาชิก</option><option>VIP</option></select></label>
+            <label><span>Point เริ่มต้น</span><input type="number" min="0" value={customerDraft.points} onChange={(event) => setCustomerDraft({ ...customerDraft, points: Number(event.target.value) })} /></label>
+            <label className="full"><span>หมายเหตุ</span><textarea placeholder="เช่น แพ้น้ำมันบางชนิด หรือต้องการ Therapist หญิง" /></label>
+          </div>
+          <div className="customer-modal-actions"><button onClick={() => setCustomerDraft(null)}>ยกเลิก</button><button disabled={!customerDraft.name.trim() || !customerDraft.phone.trim()} onClick={saveCustomer}><Icon name="check" size={16} /> {customerDraft.id ? "บันทึกการแก้ไข" : "เพิ่มลูกค้า"}</button></div>
+        </div>
+      </div>}
+    </section>
+  );
+}
+
+type ManageRecord = {
+  id: number;
+  name: string;
+  code: string;
+  category: string;
+  status: "active" | "pending" | "inactive";
+  detail: string;
+  value: string;
+  date: string;
+};
+
+const managementConfigs: Record<string, {
+  title: string; description: string; noun: string; primaryLabel: string; secondaryLabel: string; readOnly?: boolean; records: ManageRecord[];
+}> = {
+  therapists: {
+    title: "Therapist / พนักงาน", description: "จัดการพนักงาน ทักษะ ตารางงาน และค่าคอมมิชชั่น", noun: "พนักงาน", primaryLabel: "ความสามารถ", secondaryLabel: "ค่ามือ",
+    records: [
+      { id: 1, name: "น้ำฝน พรหมรักษ์", code: "TH-001", category: "นวดไทย · อโรมา", status: "active", detail: "เข้างาน 09:45 น.", value: "฿6,850", date: "คิววันนี้ 5" },
+      { id: 2, name: "มะลิ ใจดี", code: "TH-002", category: "นวดไทย · สมุนไพร", status: "active", detail: "เข้างาน 09:52 น.", value: "฿7,240", date: "คิววันนี้ 4" },
+      { id: 3, name: "พลอย วัฒนสุข", code: "TH-003", category: "อโรมา · สครับ", status: "active", detail: "เข้างาน 10:05 น.", value: "฿5,920", date: "คิววันนี้ 4" },
+      { id: 4, name: "อรทัย แสงทอง", code: "TH-004", category: "นวดเท้า · นวดไทย", status: "pending", detail: "ลาครึ่งวัน", value: "฿4,780", date: "คิววันนี้ 2" },
+    ],
+  },
+  packages: {
+    title: "Package / Course", description: "จัดการแพ็กเกจ คอร์ส และสิทธิ์คงเหลือของลูกค้า", noun: "Package", primaryLabel: "จำนวนครั้ง", secondaryLabel: "ราคา",
+    records: [
+      { id: 1, name: "Thai Massage Wellness", code: "PK-001", category: "นวดไทย 60 นาที · 10 ครั้ง", status: "active", detail: "ขายแล้ว 48 ชุด", value: "฿3,150", date: "อายุ 180 วัน" },
+      { id: 2, name: "Aroma Relax Course", code: "PK-002", category: "นวดอโรมา 90 นาที · 5 ครั้ง", status: "active", detail: "ขายแล้ว 31 ชุด", value: "฿3,375", date: "อายุ 120 วัน" },
+      { id: 3, name: "Office Syndrome Care", code: "PK-003", category: "นวดบำบัด 60 นาที · 6 ครั้ง", status: "pending", detail: "ขายแล้ว 17 ชุด", value: "฿2,790", date: "อายุ 90 วัน" },
+    ],
+  },
+  promotions: {
+    title: "Promotion", description: "สร้างส่วนลด Voucher และ Campaign สำหรับลูกค้า", noun: "Promotion", primaryLabel: "เงื่อนไข", secondaryLabel: "ส่วนลด",
+    records: [
+      { id: 1, name: "Happy Hour ก่อนบ่ายสอง", code: "PR-001", category: "จันทร์–ศุกร์ ก่อน 14:00", status: "active", detail: "ใช้แล้ว 126 ครั้ง", value: "15%", date: "ถึง 30 มิ.ย. 68" },
+      { id: 2, name: "สมาชิกใหม่", code: "PR-002", category: "ใช้บริการครั้งแรก", status: "active", detail: "ใช้แล้ว 82 ครั้ง", value: "฿100", date: "ไม่มีกำหนด" },
+      { id: 3, name: "วันเกิดสุขใจ", code: "VC-008", category: "Voucher เดือนเกิด", status: "pending", detail: "ส่งแล้ว 45 ใบ", value: "20%", date: "ถึง 31 ธ.ค. 68" },
+    ],
+  },
+  inventory: {
+    title: "สินค้า / Inventory", description: "ติดตามสินค้า วัตถุดิบ และความเคลื่อนไหวของ Stock", noun: "สินค้า", primaryLabel: "คงเหลือ", secondaryLabel: "มูลค่า",
+    records: [
+      { id: 1, name: "น้ำมันอโรมา Lavender", code: "ST-001", category: "น้ำมันนวด · 1 ลิตร", status: "active", detail: "คงเหลือ 18 ขวด", value: "฿8,100", date: "ขั้นต่ำ 6" },
+      { id: 2, name: "ลูกประคบสมุนไพร", code: "ST-002", category: "อุปกรณ์บริการ", status: "pending", detail: "คงเหลือ 7 ลูก", value: "฿1,050", date: "ต่ำกว่ากำหนด" },
+      { id: 3, name: "ผ้าขนหนูสีขาว", code: "ST-003", category: "ของใช้สิ้นเปลือง", status: "active", detail: "คงเหลือ 64 ผืน", value: "฿5,760", date: "ขั้นต่ำ 20" },
+      { id: 4, name: "เกลือสครับผิว", code: "ST-004", category: "ผลิตภัณฑ์สปา · 500 กรัม", status: "inactive", detail: "สินค้าหมด", value: "฿0", date: "รอรับสินค้า" },
+    ],
+  },
+  finance: {
+    title: "การเงิน", description: "ตรวจสอบรายการขาย การรับเงิน กะ และการปิดยอดประจำวัน", noun: "รายการ", primaryLabel: "ช่องทาง", secondaryLabel: "ยอดเงิน",
+    records: [
+      { id: 1, name: "บิล #A-0284", code: "TX-250618-01", category: "QR พร้อมเพย์", status: "active", detail: "นวดอโรม่า · นวดเท้า", value: "฿950", date: "วันนี้ 14:42" },
+      { id: 2, name: "บิล #A-0283", code: "TX-250618-02", category: "เงินสด", status: "active", detail: "นวดไทย 90 นาที", value: "฿500", date: "วันนี้ 13:18" },
+      { id: 3, name: "Refund #R-0012", code: "RF-250618-01", category: "คืนเงินผ่านบัตร", status: "pending", detail: "ยกเลิกก่อนรับบริการ", value: "−฿750", date: "วันนี้ 11:05" },
+    ],
+  },
+  reports: {
+    title: "Reports", description: "รายงานเชิงลึกสำหรับติดตามผลการดำเนินงานของร้าน", noun: "รายงาน", primaryLabel: "ช่วงข้อมูล", secondaryLabel: "อัปเดตล่าสุด", readOnly: true,
+    records: [
+      { id: 1, name: "Sales Report", code: "RPT-001", category: "ยอดขายตามวัน บริการ และสาขา", status: "active", detail: "ข้อมูล 1,248 รายการ", value: "฿428,500", date: "5 นาทีที่แล้ว" },
+      { id: 2, name: "Therapist Performance", code: "RPT-002", category: "ผลงาน ค่ามือ และคะแนนรีวิว", status: "active", detail: "พนักงาน 12 คน", value: "4.8 / 5", date: "วันนี้ 09:00" },
+      { id: 3, name: "Package Report", code: "RPT-003", category: "ยอดขายและสิทธิ์ Package", status: "active", detail: "Package ใช้งาน 96 ชุด", value: "฿186,200", date: "วันนี้ 09:00" },
+      { id: 4, name: "Inventory Report", code: "RPT-004", category: "Stock Movement และต้นทุน", status: "active", detail: "สินค้า 84 รายการ", value: "฿92,450", date: "เมื่อวาน" },
+    ],
+  },
+  analytics: {
+    title: "Dashboard / Analytics", description: "วิเคราะห์แนวโน้มยอดขาย บริการ และพฤติกรรมลูกค้า", noun: "Widget", primaryLabel: "Metric", secondaryLabel: "ผลลัพธ์", readOnly: true,
+    records: [
+      { id: 1, name: "Sales Trend", code: "AN-001", category: "เทียบ 30 วันล่าสุด", status: "active", detail: "เติบโตจากเดือนก่อน", value: "+18.4%", date: "อัปเดตสด" },
+      { id: 2, name: "Service Ranking", code: "AN-002", category: "นวดไทย 60 นาที", status: "active", detail: "บริการยอดนิยมอันดับ 1", value: "186 ครั้ง", date: "เดือนนี้" },
+      { id: 3, name: "Customer Retention", code: "AN-003", category: "ลูกค้าเก่ากลับมาใช้บริการ", status: "active", detail: "สูงกว่าค่าเฉลี่ย 8%", value: "72%", date: "เดือนนี้" },
+      { id: 4, name: "Peak Hour", code: "AN-004", category: "ช่วงเวลาที่มีลูกค้าสูงสุด", status: "active", detail: "ศุกร์–อาทิตย์", value: "16:00–19:00", date: "30 วันล่าสุด" },
+    ],
+  },
+  settings: {
+    title: "ตั้งค่า", description: "กำหนดข้อมูลสาขา บริการ ราคา และกฎการทำงาน", noun: "การตั้งค่า", primaryLabel: "หมวดหมู่", secondaryLabel: "สถานะ",
+    records: [
+      { id: 1, name: "SABAI Massage & Spa", code: "BR-001", category: "สาขาหลัก · กรุงเทพมหานคร", status: "active", detail: "เปิด 10:00–22:00", value: "VAT 7%", date: "แก้ไข 2 วันก่อน" },
+      { id: 2, name: "PromptPay QR", code: "PM-001", category: "Payment Method", status: "active", detail: "บัญชีลงท้าย 4582", value: "พร้อมใช้งาน", date: "แก้ไข 1 เดือนก่อน" },
+      { id: 3, name: "Commission Rule 2025", code: "CM-001", category: "Commission Rules", status: "active", detail: "ค่ามือ + 10% ยอดขาย", value: "ใช้งานอยู่", date: "เริ่ม 1 ม.ค. 68" },
+    ],
+  },
+  admin: {
+    title: "Administration", description: "จัดการผู้ใช้ สิทธิ์การเข้าถึง และประวัติระบบ", noun: "ผู้ใช้งาน", primaryLabel: "Role", secondaryLabel: "เข้าใช้ล่าสุด",
+    records: [
+      { id: 1, name: "มะลิ ใจดี", code: "USR-001", category: "Owner / Administrator", status: "active", detail: "เข้าถึงทุกโมดูล", value: "Online", date: "ขณะนี้" },
+      { id: 2, name: "พิมพ์ชนก วัฒนา", code: "USR-002", category: "Front Desk", status: "active", detail: "POS · Booking · ลูกค้า", value: "Active", date: "วันนี้ 09:38" },
+      { id: 3, name: "สมชาย รักษ์ดี", code: "USR-003", category: "Accountant", status: "pending", detail: "การเงิน · Reports", value: "Invited", date: "เชิญเมื่อวาน" },
+    ],
+  },
+};
+
+function ManagementWorkspace({ module }: { module: (typeof modules)[number] }) {
+  const config = managementConfigs[module.id];
+  const emptyRecord: ManageRecord = { id: 0, name: "", code: "", category: "", status: "active", detail: "", value: "", date: "สร้างเมื่อสักครู่" };
+  const [records, setRecords] = useState<ManageRecord[]>(config.records);
+  const [query, setQuery] = useState("");
+  const [activeFeature, setActiveFeature] = useState(module.features[0]);
+  const [draft, setDraft] = useState<ManageRecord | null>(null);
+  const filteredRecords = records.filter((record) => `${record.name} ${record.code} ${record.category}`.toLowerCase().includes(query.toLowerCase()));
+
+  const saveRecord = () => {
+    if (!draft?.name.trim()) return;
+    if (draft.id) setRecords((current) => current.map((record) => record.id === draft.id ? draft : record));
+    else setRecords((current) => [{ ...draft, id: Math.max(0, ...current.map((record) => record.id)) + 1 }, ...current]);
+    setDraft(null);
+  };
+
+  return (
+    <section className="management-page">
+      <div className="management-hero">
+        <div className="management-hero-icon"><Icon name={module.icon as IconName} size={27} /></div>
+        <div><p>MANAGEMENT</p><h2>{config.title}</h2><span>{config.description}</span></div>
+        <div className="management-kpis"><div><span>ทั้งหมด</span><strong>{records.length}</strong></div><div><span>ใช้งาน</span><strong>{records.filter((record) => record.status === "active").length}</strong></div><div><span>รอดำเนินการ</span><strong>{records.filter((record) => record.status === "pending").length}</strong></div></div>
+      </div>
+      <div className="management-tabs">{module.features.map((feature) => <button className={activeFeature === feature ? "active" : ""} onClick={() => setActiveFeature(feature)} key={feature}>{feature}</button>)}</div>
+      <div className="management-panel">
+        <div className="management-head">
+          <div><h3>{activeFeature}</h3><p>{config.description}</p></div>
+          {!config.readOnly && <button onClick={() => setDraft({ ...emptyRecord, code: `${module.id.slice(0, 2).toUpperCase()}-${String(records.length + 1).padStart(3, "0")}` })}><Icon name="plus" size={16} /> เพิ่ม{config.noun}</button>}
+        </div>
+        <div className="management-tools"><div><Icon name="search" size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`ค้นหา${config.noun}...`} /></div><span>{filteredRecords.length} รายการ</span></div>
+        <div className="management-table-wrap">
+          <table className="management-table">
+            <thead><tr><th>{config.noun}</th><th>{config.primaryLabel}</th><th>รายละเอียด</th><th>{config.secondaryLabel}</th><th>อัปเดต</th><th>สถานะ</th><th /></tr></thead>
+            <tbody>{filteredRecords.map((record, index) => <tr key={record.id}><td><div className={`management-item-icon tint-${index % 4}`}><Icon name={module.icon as IconName} size={17} /></div><div><strong>{record.name}</strong><span>{record.code}</span></div></td><td><strong>{record.category}</strong></td><td><span>{record.detail}</span></td><td><strong className="management-value">{record.value}</strong></td><td><span>{record.date}</span></td><td><i className={`management-status ${record.status}`}>{record.status === "active" ? "ใช้งาน" : record.status === "pending" ? "รอดำเนินการ" : "ปิดใช้งาน"}</i></td><td>{config.readOnly ? <button title="เปิดรายงาน">›</button> : <button onClick={() => setDraft({ ...record })} title="แก้ไข"><Icon name="edit" size={15} /></button>}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </div>
+      {draft && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setDraft(null)}><div className="management-modal">
+        <button className="modal-close" onClick={() => setDraft(null)}><Icon name="close" /></button><p className="eyebrow">{draft.id ? "EDIT ITEM" : "NEW ITEM"}</p><h2>{draft.id ? `แก้ไข${config.noun}` : `เพิ่ม${config.noun}`}</h2><span className="modal-subtitle">{config.description}</span>
+        <div className="management-form">
+          <label className="full"><span>ชื่อ{config.noun} *</span><input autoFocus value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder={`กรอกชื่อ${config.noun}`} /></label>
+          <label><span>รหัส</span><input value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value })} /></label>
+          <label><span>สถานะ</span><select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as ManageRecord["status"] })}><option value="active">ใช้งาน</option><option value="pending">รอดำเนินการ</option><option value="inactive">ปิดใช้งาน</option></select></label>
+          <label className="full"><span>{config.primaryLabel}</span><input value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} placeholder={config.primaryLabel} /></label>
+          <label><span>รายละเอียด</span><input value={draft.detail} onChange={(event) => setDraft({ ...draft, detail: event.target.value })} /></label>
+          <label><span>{config.secondaryLabel}</span><input value={draft.value} onChange={(event) => setDraft({ ...draft, value: event.target.value })} /></label>
+        </div>
+        <div className="management-modal-actions"><button onClick={() => setDraft(null)}>ยกเลิก</button><button disabled={!draft.name.trim()} onClick={saveRecord}><Icon name="check" size={16} /> บันทึกข้อมูล</button></div>
+      </div></div>}
+    </section>
+  );
+}
+
 function ModuleHub({ module }: { module: (typeof modules)[number] }) {
   return (
     <section className="module-page">
@@ -486,7 +722,7 @@ export default function App() {
           </div>
         </header>
 
-        {activeModule === "dashboard" ? <Dashboard onOpenPOS={() => setActiveModule("pos")} /> : activeModule === "booking" ? <BookingCalendar /> : activeModule === "rooms" ? <RoomsBoard /> : activeModule === "pos" ? <section className="workspace">
+        {activeModule === "dashboard" ? <Dashboard onOpenPOS={() => setActiveModule("pos")} /> : activeModule === "booking" ? <BookingCalendar /> : activeModule === "rooms" ? <RoomsBoard /> : activeModule === "customers" ? <CustomerManagement /> : activeModule === "pos" ? <section className="workspace">
           <div className="catalog">
             <div className="catalog-tools">
               <div className="search"><Icon name="search" size={19} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาบริการ..." /></div>
@@ -554,7 +790,7 @@ export default function App() {
               <p className="payment-note">รองรับ เงินสด · QR พร้อมเพย์ · บัตรเครดิต</p>
             </div>
           </aside>
-        </section> : <ModuleHub module={modules.find((module) => module.id === activeModule) ?? modules[0]} />}
+        </section> : managementConfigs[activeModule] ? <ManagementWorkspace key={activeModule} module={modules.find((module) => module.id === activeModule) ?? modules[0]} /> : <ModuleHub module={modules.find((module) => module.id === activeModule) ?? modules[0]} />}
       </main>
 
       {paymentOpen && (

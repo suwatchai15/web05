@@ -129,6 +129,12 @@ namespace MassagePlatform.WebApi.Data.Migrations.Tenant
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasDefaultValue("\u0e17\u0e31\u0e48\u0e27\u0e44\u0e1b")
+                        .HasColumnType("character varying(24)");
+
                     b.HasKey("Id");
 
                     b.ToTable("Customers");

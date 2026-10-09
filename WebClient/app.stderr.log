@@ -1,0 +1,338 @@
+npm notice run massage-client@0.0.0 start
+npm notice run ng serve --host 127.0.0.1 --port 4200
+X [ERROR] TS2345: Argument of type '{ password?: string | undefined; email: string; role: "Owner" | "Manager" | "Staff"; }' is not assignable to parameter of type '{ email: string; role: "Manager" | "Staff"; password?: string | undefined; }'.
+  Types of property 'role' are incompatible.
+    Type '"Owner" | "Manager" | "Staff"' is not assignable to type '"Manager" | "Staff"'.
+      Type '"Owner"' is not assignable to type '"Manager" | "Staff"'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.ts:500:54:
+      500 │         await this.api.updateUser(this.editingUserId, update);
+          ╵                                                       ~~~~~~
+
+
+X [ERROR] TS2345: Argument of type '{ password?: string | undefined; email: string; role: "Owner" | "Manager" | "Staff"; }' is not assignable to parameter of type '{ email: string; role: "Manager" | "Staff"; password?: string | undefined; }'.
+  Types of property 'role' are incompatible.
+    Type '"Owner" | "Manager" | "Staff"' is not assignable to type '"Manager" | "Staff"'.
+      Type '"Owner"' is not assignable to type '"Manager" | "Staff"'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.ts:500:54:
+      500 │         await this.api.updateUser(this.editingUserId, update);
+          ╵                                                       ~~~~~~
+
+
+X [ERROR] TS2339: Property 'deleteBranch' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:739:162:
+      739 │ ...ton><button type="button" (click)="deleteBranch(branch)" [disa...
+          ╵                             ~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'deleteCustomer' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:709:160:
+      709 │ ...on><button type="button" (click)="deleteCustomer(customer)" [d...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'deleteCustomer' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:709:160:
+      709 │ ...on><button type="button" (click)="deleteCustomer(customer)" [d...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'deleteCustomer' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:709:160:
+      709 │ ...on><button type="button" (click)="deleteCustomer(customer)" [d...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'deleteCustomer' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:709:160:
+      709 │ ...on><button type="button" (click)="deleteCustomer(customer)" [d...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'deleteCustomer' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:709:160:
+      709 │ ...on><button type="button" (click)="deleteCustomer(customer)" [d...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+▲ [WARNING] NG8113: RouterOutlet is not used within the template of App [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.ts:30:55:
+      30 │   imports: [CommonModule, FormsModule, NgSelectModule, RouterOutlet],
+         ╵                                                        ~~~~~~~~~~~~
+
+
+X [ERROR] NG5002: Unexpected closing block. The block may have been closed earlier. Did you forget to close the <div> element? If you meant to write the `}` character, you should use the "&#125;" HTML entity instead. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:737:8:
+      737 │         }
+          ╵         ^
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] NG5002: Unexpected closing tag "div". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:877:6:
+      877 │       </div>
+          ╵       ~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] NG5002: Unexpected closing tag "main". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:878:4:
+      878 │     </main>
+          ╵     ~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] NG5002: Unexpected closing tag "div". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:904:2:
+      904 │   </div>
+          ╵   ~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] NG5002: Unexpected closing block. The block may have been closed earlier. If you meant to write the `}` character, you should use the "&#125;" HTML entity instead. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:905:0:
+      905 │ }
+          ╵ ^
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2551: Property 'deactivateStaff' does not exist on type 'App'. Did you mean 'activeStaff'? [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:613:180:
+      613 │ ...on><button type="button" (click)="deactivateStaff(member)" [di...
+          ╵                            ~~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2551: Property 'deactivateStaff' does not exist on type 'App'. Did you mean 'activeStaff'? [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:613:180:
+      613 │ ...on><button type="button" (click)="deactivateStaff(member)" [di...
+          ╵                            ~~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'deleteService' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:578:164:
+      578 │ ...ton><button type="button" (click)="deleteService(service)" [di...
+          ╵                             ~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2551: Property 'deactivateRoom' does not exist on type 'App'. Did you mean 'activeRooms'? [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:604:175:
+      604 │ ...on><button type="button" (click)="deactivateRoom(room)" [disab...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2551: Property 'deactivateRoom' does not exist on type 'App'. Did you mean 'activeRooms'? [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:604:175:
+      604 │ ...on><button type="button" (click)="deactivateRoom(room)" [disab...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2551: Property 'deactivateRoom' does not exist on type 'App'. Did you mean 'activeRooms'? [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:604:175:
+      604 │ ...on><button type="button" (click)="deactivateRoom(room)" [disab...
+          ╵                            ~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+19:22:21 [vite] http proxy error: /api/appointments
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:790:25)
+    at Socket.emit (node:events:526:24)
+    at endReadableNT (node:internal/streams/readable:1764:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+X [ERROR] TS2367: This comparison appears to be unintentional because the types '"staff"' and '"rooms"' have no overlap. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:611:191:
+      611 │ ...�ค้นหา' : 'ยังไม่มีข้อมู�...
+          ╵                ~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+19:55:32 [vite] http proxy error: /api/appointments
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:790:25)
+    at Socket.emit (node:events:526:24)
+    at endReadableNT (node:internal/streams/readable:1764:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+19:55:41 [vite] http proxy error: /api/appointments
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:790:25)
+    at Socket.emit (node:events:526:24)
+    at endReadableNT (node:internal/streams/readable:1764:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+19:56:14 [vite] http proxy error: /api/appointments
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:790:25)
+    at Socket.emit (node:events:526:24)
+    at endReadableNT (node:internal/streams/readable:1764:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+20:00:43 [vite] http proxy error: /api/appointments
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:790:25)
+    at Socket.emit (node:events:526:24)
+    at endReadableNT (node:internal/streams/readable:1764:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+20:01:02 [vite] http proxy error: /api/appointments
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:790:25)
+    at Socket.emit (node:events:526:24)
+    at endReadableNT (node:internal/streams/readable:1764:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+X [ERROR] TS2339: Property 'customersWithEmail' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:710:108:
+      710 │ ...�ีอีเมล</small><strong>{{ customersWithEmail | num...
+          ╵              ~~~~~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'customersWithEmail' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:710:108:
+      710 │ ...�ีอีเมล</small><strong>{{ customersWithEmail | num...
+          ╵              ~~~~~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] TS2339: Property 'customersWithEmail' does not exist on type 'App'. [plugin angular-compiler]
+
+    C:/web05/WebClient/src/app/app.html:710:108:
+      710 │ ...�ีอีเมล</small><strong>{{ customersWithEmail | num...
+          ╵              ~~~~~~~~~~~~~~~~~~
+
+  Error occurs in the template of component App.
+
+    C:/web05/WebClient/src/app/app.ts:33:15:
+      33 │   templateUrl: './app.html',
+         ╵                ~~~~~~~~~~~~
+
+
