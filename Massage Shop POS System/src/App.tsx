@@ -16,7 +16,8 @@ type IconName =
   | "clock"
   | "close"
   | "check"
-  | "edit";
+  | "edit"
+  | "menu";
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, React.ReactNode> = {
@@ -63,6 +64,7 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
     close: <path d="m6 6 12 12M18 6 6 18" />,
     check: <path d="m5 12 4 4L19 6" />,
     edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
+    menu: <><path d="M4 7h16M4 12h16M4 17h16" /></>,
   };
 
   return (
@@ -183,21 +185,61 @@ function BookingCalendar() {
     { id: 7, customer: "นภัสสร", service: "นวดไทย 60 นาที", staff: "น้ำฝน", room: "ห้อง 03", start: 15, duration: 2, time: "16:30–17:30", status: "reserved" },
   ];
   const blankBooking = { customer: "", service: "นวดไทย 60 นาที", staff: "น้ำฝน", room: "ห้อง 01", time: "10:00", status: "reserved" as TimelineBooking["status"] };
-  const [resourceView, setResourceView] = useState<"staff" | "room">("staff");
+  const resourceView = "staff" as const;
   const [selectedDay, setSelectedDay] = useState(18);
   const [timelineBookings, setTimelineBookings] = useState<TimelineBooking[]>(initialTimelineBookings);
   const [bookingDraft, setBookingDraft] = useState<typeof blankBooking | null>(null);
-  const resources = resourceView === "staff"
-    ? [{ name: "น้ำฝน", detail: "นวดไทย · อโรมา" }, { name: "มะลิ", detail: "นวดไทย · สมุนไพร" }, { name: "พลอย", detail: "อโรมา · สครับ" }, { name: "อรทัย", detail: "นวดเท้า · นวดไทย" }, { name: "จิรา", detail: "นวดไทย · อโรมา" }]
-    : [{ name: "ห้อง 01", detail: "ห้องนวดไทย · 2 เตียง" }, { name: "ห้อง 02", detail: "ห้องอโรมา · 1 เตียง" }, { name: "ห้อง 03", detail: "ห้องนวดไทย · 2 เตียง" }, { name: "ห้อง 04", detail: "ห้องสมุนไพร · 1 เตียง" }, { name: "ห้อง 05", detail: "ห้องนวดเท้า · 3 ที่" }];
+  const [dragSelection, setDragSelection] = useState<{ resource: string; start: number; duration: number } | null>(null);
+  const [draggedBookingId, setDraggedBookingId] = useState<number | null>(null);
+  const resources = [{ name: "น้ำฝน", detail: "นวดไทย · อโรมา" }, { name: "มะลิ", detail: "นวดไทย · สมุนไพร" }, { name: "พลอย", detail: "อโรมา · สครับ" }, { name: "อรทัย", detail: "นวดเท้า · นวดไทย" }, { name: "จิรา", detail: "นวดไทย · อโรมา" }];
   const statusLabel = { reserved: "จองแล้ว", started: "เริ่มแล้ว", waiting: "รอเริ่ม", done: "เสร็จแล้ว" };
   const timeLabels = Array.from({ length: 19 }, (_, index) => `${String(9 + Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}`);
+  const slotFromPointer = (event: React.PointerEvent<HTMLDivElement> | React.DragEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return Math.max(0, Math.min(17, Math.floor(((event.clientX - bounds.left) / bounds.width) * 18)));
+  };
+  const slotToTime = (slot: number) => `${String(9 + Math.floor(slot / 2)).padStart(2, "0")}:${slot % 2 ? "30" : "00"}`;
+  const bookingTime = (start: number, duration: number) => `${slotToTime(start)}–${slotToTime(start + duration)}`;
+
+  const startRangeSelection = (event: React.PointerEvent<HTMLDivElement>, resource: string) => {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragSelection({ resource, start: Math.min(16, slotFromPointer(event)), duration: 2 });
+  };
+  const updateRangeSelection = (event: React.PointerEvent<HTMLDivElement>, resource: string) => {
+    if (!dragSelection || dragSelection.resource !== resource || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const slot = slotFromPointer(event);
+    const duration = Math.max(2, Math.min(4, Math.abs(slot - dragSelection.start) + 1));
+    const start = Math.min(18 - duration, Math.min(dragSelection.start, slot));
+    setDragSelection({ resource, start, duration });
+  };
+  const finishRangeSelection = (event: React.PointerEvent<HTMLDivElement>, resource: string) => {
+    if (!dragSelection || dragSelection.resource !== resource) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    const duration = dragSelection.duration;
+    const service = duration >= 4 ? "แพ็กเกจ 120 นาที" : duration === 3 ? "นวดไทย 90 นาที" : "นวดไทย 60 นาที";
+    setBookingDraft({ ...blankBooking, service, time: slotToTime(dragSelection.start), [resourceView]: resource });
+    setDragSelection(null);
+  };
+  const dropBooking = (event: React.DragEvent<HTMLDivElement>, resource: string) => {
+    event.preventDefault();
+    if (draggedBookingId === null) return;
+    const booking = timelineBookings.find((item) => item.id === draggedBookingId);
+    if (!booking) return;
+    const start = Math.min(18 - booking.duration, slotFromPointer(event));
+    setTimelineBookings((current) => current.map((booking) =>
+      booking.id === draggedBookingId
+        ? { ...booking, [resourceView]: resource, start, time: bookingTime(start, booking.duration) }
+        : booking,
+    ));
+    setDraggedBookingId(null);
+  };
 
   const saveBooking = () => {
     if (!bookingDraft?.customer.trim()) return;
     const [hour, minute] = bookingDraft.time.split(":").map(Number);
     const start = Math.max(0, Math.min(17, (hour - 9) * 2 + (minute >= 30 ? 1 : 0)));
-    const duration = bookingDraft.service.includes("90") ? 3 : 2;
+    const duration = bookingDraft.service.includes("120") ? 4 : bookingDraft.service.includes("90") ? 3 : 2;
     const endMinutes = hour * 60 + minute + duration * 30;
     const end = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
     setTimelineBookings((current) => [...current, {
@@ -217,10 +259,7 @@ function BookingCalendar() {
   return (
     <section className="timeline-page">
       <div className="timeline-toolbar">
-        <div className="resource-switch">
-          <button className={resourceView === "staff" ? "active" : ""} onClick={() => setResourceView("staff")}><Icon name="users" size={17} /> พนักงาน</button>
-          <button className={resourceView === "room" ? "active" : ""} onClick={() => setResourceView("room")}><Icon name="door" size={17} /> ห้อง / เตียง</button>
-        </div>
+        <div className="resource-switch"><button className="active"><Icon name="users" size={17} /> ตารางคิวพนักงาน</button></div>
         <div className="timeline-date"><button onClick={() => setSelectedDay((day) => day - 1)}>‹</button><div><span>วันพุธ</span><strong>{selectedDay} มิถุนายน 2568</strong></div><button onClick={() => setSelectedDay((day) => day + 1)}>›</button><button onClick={() => setSelectedDay(18)}>วันนี้</button></div>
         <button className="new-booking" onClick={() => setBookingDraft({ ...blankBooking })}><Icon name="plus" /> จองคิวใหม่</button>
       </div>
@@ -230,18 +269,35 @@ function BookingCalendar() {
       </div>
 
       <div className="resource-timeline">
-        <div className="timeline-corner"><span>{resourceView === "staff" ? "THERAPIST" : "ROOM / BED"}</span><strong>{resourceView === "staff" ? "พนักงานวันนี้" : "ห้องให้บริการ"}</strong></div>
+        <div className="timeline-corner"><span>THERAPIST</span><strong>พนักงานวันนี้</strong></div>
         <div className="timeline-times">{timeLabels.map((time) => <span key={time}>{time}</span>)}</div>
         <div className="resource-list">
-          {resources.map((resource, index) => <div className="resource-person" key={resource.name}><div className={`resource-avatar tone-${index}`}>{resourceView === "staff" ? resource.name.slice(0, 1) : <Icon name="door" size={17} />}</div><div><strong>{resource.name}</strong><span>{resource.detail}</span></div><i className={index === 4 ? "away" : ""} /></div>)}
+          {resources.map((resource, index) => <div className="resource-person" key={resource.name}><div className={`resource-avatar tone-${index}`}>{resource.name.slice(0, 1)}</div><div><strong>{resource.name}</strong><span>{resource.detail}</span></div><i className={index === 4 ? "away" : ""} /></div>)}
         </div>
         <div className="timeline-board">
           <div className="now-line"><span>14:20</span></div>
           {resources.map((resource) => (
-            <div className="timeline-row" key={resource.name} onDoubleClick={() => setBookingDraft({ ...blankBooking, [resourceView]: resource.name })}>
+            <div
+              className={`timeline-row ${draggedBookingId !== null ? "drop-ready" : ""}`}
+              key={resource.name}
+              onPointerDown={(event) => startRangeSelection(event, resource.name)}
+              onPointerMove={(event) => updateRangeSelection(event, resource.name)}
+              onPointerUp={(event) => finishRangeSelection(event, resource.name)}
+              onPointerCancel={() => setDragSelection(null)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => dropBooking(event, resource.name)}
+            >
               <div className="half-hour-grid">{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
+              {dragSelection?.resource === resource.name && <div className={`drag-selection slot-${dragSelection.start} duration-${dragSelection.duration}`}><span>{bookingTime(dragSelection.start, dragSelection.duration)}</span></div>}
               {timelineBookings.filter((booking) => booking[resourceView] === resource.name).map((booking) => (
-                <button className={`timeline-event ${booking.status} slot-${booking.start} duration-${booking.duration}`} key={booking.id}>
+                <button
+                  draggable
+                  className={`timeline-event ${booking.status} slot-${booking.start} duration-${booking.duration} ${draggedBookingId === booking.id ? "dragging" : ""}`}
+                  key={booking.id}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onDragStart={(event) => { setDraggedBookingId(booking.id); event.dataTransfer.effectAllowed = "move"; }}
+                  onDragEnd={() => setDraggedBookingId(null)}
+                >
                   <strong>{booking.service}</strong>
                   <span><Icon name="user" size={11} /> {booking.customer}</span>
                   <small>{booking.time}<b>{statusLabel[booking.status]}</b></small>
@@ -251,7 +307,7 @@ function BookingCalendar() {
           ))}
         </div>
       </div>
-      <p className="timeline-tip">ดับเบิลคลิกบนช่องเวลาเพื่อเพิ่มคิว · สลับดูคิวตามพนักงานหรือห้องได้จากปุ่มด้านบน</p>
+      <p className="timeline-tip">ลากบนช่องว่างเพื่อเลือกช่วงเวลาและจองคิว · ลากบล็อกคิวเพื่อย้ายเวลา พนักงาน หรือห้อง</p>
 
       {bookingDraft && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setBookingDraft(null)}>
         <div className="booking-modal">
@@ -259,11 +315,10 @@ function BookingCalendar() {
           <p className="eyebrow">NEW BOOKING</p><h2>จองคิวใหม่</h2><span className="modal-subtitle">กรอกข้อมูลการจองและจัดสรรพนักงานกับห้อง</span>
           <div className="booking-form">
             <label className="full"><span>ชื่อลูกค้า</span><input autoFocus value={bookingDraft.customer} onChange={(event) => setBookingDraft({ ...bookingDraft, customer: event.target.value })} placeholder="ค้นหาหรือเพิ่มชื่อลูกค้า" /></label>
-            <label className="full"><span>บริการ</span><select value={bookingDraft.service} onChange={(event) => setBookingDraft({ ...bookingDraft, service: event.target.value })}><option>นวดไทย 60 นาที</option><option>นวดไทย 90 นาที</option><option>นวดอโรม่า 60 นาที</option><option>นวดอโรม่า 90 นาที</option><option>นวดฝ่าเท้า 60 นาที</option><option>ประคบสมุนไพร 90 นาที</option></select></label>
+            <label className="full"><span>บริการ</span><select value={bookingDraft.service} onChange={(event) => setBookingDraft({ ...bookingDraft, service: event.target.value })}><option>นวดไทย 60 นาที</option><option>นวดไทย 90 นาที</option><option>นวดอโรม่า 60 นาที</option><option>นวดอโรม่า 90 นาที</option><option>นวดฝ่าเท้า 60 นาที</option><option>ประคบสมุนไพร 90 นาที</option><option>แพ็กเกจ 120 นาที</option></select></label>
             <label><span>วันที่</span><input type="date" defaultValue="2025-06-18" /></label>
             <label><span>เวลาเริ่ม</span><select value={bookingDraft.time} onChange={(event) => setBookingDraft({ ...bookingDraft, time: event.target.value })}>{timeLabels.slice(0, 18).map((time) => <option key={time}>{time}</option>)}</select></label>
-            <label><span>Therapist</span><select value={bookingDraft.staff} onChange={(event) => setBookingDraft({ ...bookingDraft, staff: event.target.value })}>{["น้ำฝน", "มะลิ", "พลอย", "อรทัย", "จิรา"].map((staff) => <option key={staff}>{staff}</option>)}</select></label>
-            <label><span>ห้อง / เตียง</span><select value={bookingDraft.room} onChange={(event) => setBookingDraft({ ...bookingDraft, room: event.target.value })}>{["ห้อง 01", "ห้อง 02", "ห้อง 03", "ห้อง 04", "ห้อง 05"].map((room) => <option key={room}>{room}</option>)}</select></label>
+            <label className="full"><span>Therapist</span><select value={bookingDraft.staff} onChange={(event) => setBookingDraft({ ...bookingDraft, staff: event.target.value })}>{["น้ำฝน", "มะลิ", "พลอย", "อรทัย", "จิรา"].map((staff) => <option key={staff}>{staff}</option>)}</select></label>
             <label className="full"><span>สถานะ</span><div className="booking-status-options">{(["reserved", "waiting"] as const).map((status) => <button className={bookingDraft.status === status ? "active" : ""} onClick={() => setBookingDraft({ ...bookingDraft, status })} key={status}><i className={status} />{status === "reserved" ? "ยืนยันการจอง" : "รอ Check-in"}</button>)}</div></label>
           </div>
           <div className="booking-modal-actions"><button onClick={() => setBookingDraft(null)}>ยกเลิก</button><button disabled={!bookingDraft.customer.trim()} onClick={saveBooking}><Icon name="calendar" size={16} /> ยืนยันการจอง</button></div>
@@ -402,6 +457,43 @@ function RoomsBoard() {
   );
 }
 
+type Customer = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  visits: number;
+  spend: number;
+  points: number;
+  tag: "VIP" | "สมาชิก" | "ลูกค้าใหม่" | "ทั่วไป";
+  lastVisit: string;
+};
+
+const initialCustomers: Customer[] = [
+  { id: 1, name: "วราภรณ์ สุขใจ", phone: "089-245-7812", email: "waraporn@email.com", visits: 18, spend: 14850, points: 1280, tag: "VIP", lastVisit: "วันนี้, 10:30" },
+  { id: 2, name: "ศิริพร แสงทอง", phone: "081-639-4420", email: "siriporn@email.com", visits: 9, spend: 7200, points: 640, tag: "สมาชิก", lastVisit: "วันนี้, 14:30" },
+  { id: 3, name: "กิตติพงษ์ วัฒนา", phone: "095-826-1033", email: "kittipong@email.com", visits: 6, spend: 4950, points: 410, tag: "สมาชิก", lastVisit: "16 มิ.ย. 2568" },
+  { id: 4, name: "พรทิพย์ สวัสดี", phone: "086-772-9015", email: "porntip@email.com", visits: 13, spend: 10200, points: 920, tag: "VIP", lastVisit: "14 มิ.ย. 2568" },
+  { id: 5, name: "Rachel Morgan", phone: "092-451-6830", email: "rachel.m@email.com", visits: 2, spend: 1500, points: 120, tag: "ลูกค้าใหม่", lastVisit: "12 มิ.ย. 2568" },
+  { id: 6, name: "ธนกร วงศ์สวัสดิ์", phone: "084-519-2276", email: "thanakorn@email.com", visits: 4, spend: 3100, points: 260, tag: "ทั่วไป", lastVisit: "10 มิ.ย. 2568" },
+  { id: 7, name: "นภัสสร มีสุข", phone: "099-265-7318", email: "napatsorn@email.com", visits: 1, spend: 550, points: 55, tag: "ลูกค้าใหม่", lastVisit: "8 มิ.ย. 2568" },
+];
+
+function TablePagination({ page, pageSize, total, onChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = total ? (page - 1) * pageSize + 1 : 0;
+  const end = Math.min(page * pageSize, total);
+  return (
+    <div className="table-pagination">
+      <span>แสดง {start}–{end} จาก {total} รายการ</span>
+      <div>
+        <button disabled={page === 1} onClick={() => onChange(page - 1)} aria-label="หน้าก่อนหน้า">‹</button>
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => <button className={page === pageNumber ? "active" : ""} onClick={() => onChange(pageNumber)} key={pageNumber}>{pageNumber}</button>)}
+        <button disabled={page === totalPages} onClick={() => onChange(page + 1)} aria-label="หน้าถัดไป">›</button>
+      </div>
+    </div>
+  );
+}
 
 function CustomerManagement() {
   const blankCustomer: Customer = { id: 0, name: "", phone: "", email: "", visits: 0, spend: 0, points: 0, tag: "ลูกค้าใหม่", lastVisit: "ยังไม่เคยใช้บริการ" };
@@ -409,10 +501,15 @@ function CustomerManagement() {
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState("ทั้งหมด");
   const [customerDraft, setCustomerDraft] = useState<Customer | null>(null);
+  const [customerPage, setCustomerPage] = useState(1);
+  const customerPageSize = 5;
   const filteredCustomers = customers.filter((customer) =>
     (tagFilter === "ทั้งหมด" || customer.tag === tagFilter) &&
     `${customer.name} ${customer.phone} ${customer.email}`.toLowerCase().includes(query.toLowerCase()),
   );
+  const customerTotalPages = Math.max(1, Math.ceil(filteredCustomers.length / customerPageSize));
+  const safeCustomerPage = Math.min(customerPage, customerTotalPages);
+  const visibleCustomers = filteredCustomers.slice((safeCustomerPage - 1) * customerPageSize, safeCustomerPage * customerPageSize);
 
   const saveCustomer = () => {
     if (!customerDraft?.name.trim() || !customerDraft.phone.trim()) return;
@@ -438,15 +535,15 @@ function CustomerManagement() {
           <button onClick={() => setCustomerDraft({ ...blankCustomer })}><Icon name="plus" size={17} /> เพิ่มลูกค้า</button>
         </div>
         <div className="customer-tools">
-          <div className="customer-search"><Icon name="search" size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาชื่อ เบอร์โทร หรืออีเมล..." /></div>
-          <div className="customer-filters">{["ทั้งหมด", "VIP", "สมาชิก", "ลูกค้าใหม่", "ทั่วไป"].map((tag) => <button className={tagFilter === tag ? "active" : ""} onClick={() => setTagFilter(tag)} key={tag}>{tag}</button>)}</div>
+          <div className="customer-search"><Icon name="search" size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setCustomerPage(1); }} placeholder="ค้นหาชื่อ เบอร์โทร หรืออีเมล..." /></div>
+          <div className="customer-filters">{["ทั้งหมด", "VIP", "สมาชิก", "ลูกค้าใหม่", "ทั่วไป"].map((tag) => <button className={tagFilter === tag ? "active" : ""} onClick={() => { setTagFilter(tag); setCustomerPage(1); }} key={tag}>{tag}</button>)}</div>
           <span>{filteredCustomers.length} รายการ</span>
         </div>
         <div className="customer-table-wrap">
           <table className="customer-table">
             <thead><tr><th>ลูกค้า</th><th>ติดต่อ</th><th>ประเภท</th><th>เข้าใช้บริการ</th><th>ยอดใช้จ่าย</th><th>Point</th><th>ล่าสุด</th><th /></tr></thead>
             <tbody>
-              {filteredCustomers.map((customer, index) => (
+              {visibleCustomers.map((customer, index) => (
                 <tr key={customer.id}>
                   <td><div className={`customer-avatar color-${index % 5}`}>{customer.name.slice(0, 1)}</div><div><strong>{customer.name}</strong><span>CM-{String(customer.id).padStart(4, "0")}</span></div></td>
                   <td><strong>{customer.phone}</strong><span>{customer.email || "ไม่ระบุอีเมล"}</span></td>
@@ -462,6 +559,7 @@ function CustomerManagement() {
           </table>
           {!filteredCustomers.length && <div className="customer-empty"><div><Icon name="users" /></div><strong>ไม่พบลูกค้า</strong><span>ลองเปลี่ยนตัวกรองหรือคำค้นหา</span></div>}
         </div>
+        <TablePagination page={safeCustomerPage} pageSize={customerPageSize} total={filteredCustomers.length} onChange={setCustomerPage} />
       </div>
 
       {customerDraft && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCustomerDraft(null)}>
@@ -577,19 +675,100 @@ const managementConfigs: Record<string, {
   },
 };
 
+const featureSamples: Record<string, string[]> = {
+  "therapists:Skill / ความสามารถ": ["นวดไทย", "นวดน้ำมันอโรมา", "นวดฝ่าเท้า", "ประคบสมุนไพร"],
+  "therapists:ตารางงาน": ["กะเช้า 09:00–18:00", "กะกลาง 11:00–20:00", "กะบ่าย 13:00–22:00"],
+  "therapists:Check-in / Check-out": ["น้ำฝน · เข้างาน 09:45", "มะลิ · เข้างาน 09:52", "พลอย · เข้างาน 10:05"],
+  "therapists:Commission": ["ค่ามือนวดไทย", "ค่ามือนวดอโรมา", "Commission ขาย Package", "Commission ขายสินค้า"],
+  "therapists:สรุปค่ามือ": ["น้ำฝน · มิถุนายน", "มะลิ · มิถุนายน", "พลอย · มิถุนายน", "อรทัย · มิถุนายน"],
+  "packages:สร้าง Package": ["Draft · Wellness 10 ครั้ง", "Draft · Office Syndrome", "Draft · Couple Retreat"],
+  "packages:Package ลูกค้า": ["วราภรณ์ · Thai Wellness", "ศิริพร · Aroma Relax", "พรทิพย์ · Office Syndrome"],
+  "packages:การใช้สิทธิ์": ["ใช้สิทธิ์ #US-1284", "ใช้สิทธิ์ #US-1283", "ใช้สิทธิ์ #US-1282"],
+  "packages:วันหมดอายุ": ["หมดอายุใน 7 วัน", "หมดอายุใน 30 วัน", "หมดอายุใน 60 วัน"],
+  "promotions:Discount": ["ส่วนลดสมาชิก 10%", "ส่วนลดพนักงาน 20%", "ส่วนลดวันเกิด 15%"],
+  "promotions:Voucher": ["Voucher ฿500", "Voucher Aroma 60 นาที", "Gift Card ฿1,000"],
+  "promotions:Campaign": ["สงกรานต์สุขใจ", "Mother's Day Retreat", "Year End Wellness"],
+  "inventory:Stock": ["น้ำมันอโรมา Lavender", "ลูกประคบสมุนไพร", "ผ้าขนหนูสีขาว", "เกลือสครับผิว"],
+  "inventory:รับสินค้า": ["GR-0062 · Aroma Oil", "GR-0061 · ผ้าขนหนู", "GR-0060 · ลูกประคบ"],
+  "inventory:ตัด Stock": ["เบิกใช้ห้องอโรมา", "เบิกใช้ห้องนวดไทย", "สินค้าเสียหาย"],
+  "inventory:ปรับ Stock": ["ADJ-0028 · ตรวจนับ", "ADJ-0027 · ของแถม", "ADJ-0026 · ชำรุด"],
+  "inventory:Stock Movement": ["Movement · น้ำมันอโรมา", "Movement · ลูกประคบ", "Movement · ผ้าขนหนู"],
+  "finance:รายการรับเงิน": ["รับเงิน #RC-0284", "รับเงิน #RC-0283", "รับเงิน #RC-0282"],
+  "finance:เปิด/ปิดกะ": ["กะเช้า · 18 มิ.ย.", "กะบ่าย · 18 มิ.ย.", "กะปิด · 17 มิ.ย."],
+  "finance:Cash Drawer": ["เงินสดตั้งต้น", "เงินสดรับระหว่างกะ", "นำเงินออกจากลิ้นชัก"],
+  "finance:Refund": ["Refund #R-0012", "Refund #R-0011", "Refund #R-0010"],
+  "finance:Daily Closing": ["ปิดยอด 18 มิ.ย. 2568", "ปิดยอด 17 มิ.ย. 2568", "ปิดยอด 16 มิ.ย. 2568"],
+  "reports:Sales Report": ["ยอดขายวันนี้", "ยอดขายสัปดาห์นี้", "ยอดขายเดือนนี้", "ยอดขายแยกตามสาขา"],
+  "reports:Service Report": ["นวดไทย 60 นาที", "นวดอโรม่า 90 นาที", "นวดฝ่าเท้า 60 นาที"],
+  "reports:Therapist Performance": ["น้ำฝน พรหมรักษ์", "มะลิ ใจดี", "พลอย วัฒนสุข"],
+  "reports:Commission Report": ["ค่ามือประจำเดือน", "Commission Package", "Commission สินค้า"],
+  "reports:Payment Report": ["QR พร้อมเพย์", "เงินสด", "บัตรเครดิต"],
+  "reports:Customer Report": ["ลูกค้าใหม่", "ลูกค้ากลับมาใช้ซ้ำ", "สมาชิก VIP"],
+  "reports:Package Report": ["Thai Massage Wellness", "Aroma Relax Course", "Office Syndrome Care"],
+  "reports:Inventory Report": ["Stock คงเหลือ", "Stock Movement", "สินค้าต่ำกว่ากำหนด"],
+  "reports:Profit / Cost": ["รายได้จากบริการ", "ต้นทุนพนักงาน", "ต้นทุนผลิตภัณฑ์", "กำไรขั้นต้น"],
+  "analytics:Sales Trend": ["ยอดขาย 7 วันล่าสุด", "ยอดขาย 30 วันล่าสุด", "ยอดขายเทียบปีก่อน"],
+  "analytics:Service Ranking": ["อันดับ 1 · นวดไทย 60 นาที", "อันดับ 2 · นวดอโรมา 90 นาที", "อันดับ 3 · นวดฝ่าเท้า"],
+  "analytics:Therapist Performance": ["น้ำฝน · คะแนน 4.9", "มะลิ · คะแนน 4.8", "พลอย · คะแนน 4.8"],
+  "analytics:Customer ใหม่ / เก่า": ["ลูกค้าใหม่เดือนนี้", "ลูกค้าเก่ากลับมา", "สมาชิกที่ Active"],
+  "analytics:Peak Hour": ["16:00–17:00", "17:00–18:00", "18:00–19:00"],
+  "settings:สาขา": ["SABAI สาขาสุขุมวิท", "SABAI สาขาอารีย์", "SABAI สาขาสาทร"],
+  "settings:ห้อง / เตียง": ["ห้องนวดไทย", "ห้องอโรมา", "เตียงนวดเท้า", "ห้อง VIP"],
+  "settings:Services": ["นวดไทย", "นวดน้ำมันอโรมา", "นวดฝ่าเท้า", "ประคบสมุนไพร"],
+  "settings:ราคา": ["ราคาปกติ", "ราคาสมาชิก", "ราคาช่วงเทศกาล"],
+  "settings:Therapist": ["ระดับ Junior", "ระดับ Senior", "ระดับ Specialist"],
+  "settings:Commission Rules": ["ค่ามือต่อบริการ", "Commission Package", "Commission สินค้า"],
+  "settings:Payment Methods": ["เงินสด", "QR พร้อมเพย์", "บัตรเครดิต", "หลายช่องทาง"],
+  "settings:Tax / Receipt": ["VAT 7%", "ใบเสร็จรับเงิน", "ใบกำกับภาษีเต็มรูป"],
+  "settings:System Settings": ["ภาษาและเขตเวลา", "การแจ้งเตือน", "สำรองข้อมูล", "เลขที่เอกสาร"],
+  "admin:Roles / Permissions": ["Owner / Administrator", "Branch Manager", "Front Desk", "Accountant"],
+  "admin:Audit Log": ["แก้ไขราคาบริการ", "ยกเลิกบิล #A-0281", "แก้ไขสิทธิ์ผู้ใช้"],
+  "admin:System Log": ["Daily backup completed", "User login successful", "Receipt service connected"],
+};
+
+function seedFeatureRecords(moduleId: string, feature: string, config: (typeof managementConfigs)[string]): ManageRecord[] {
+  const names = featureSamples[`${moduleId}:${feature}`] ?? [`${feature} · รายการ 1`, `${feature} · รายการ 2`, `${feature} · รายการ 3`];
+  return names.map((name, index) => ({
+    id: index + 1,
+    name,
+    code: `${moduleId.slice(0, 2).toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
+    category: feature,
+    status: index === 2 ? "pending" : "active",
+    detail: index === 0 ? `ข้อมูล${feature}ล่าสุด` : `รายละเอียด${config.noun} ${index + 1}`,
+    value: moduleId === "reports" ? `${(128 - index * 17).toLocaleString()} รายการ` : moduleId === "analytics" ? `${18 - index * 3}.4%` : "พร้อมใช้งาน",
+    date: index === 0 ? "อัปเดตวันนี้" : `${index + 1} วันที่แล้ว`,
+  }));
+}
+
 function ManagementWorkspace({ module }: { module: (typeof modules)[number] }) {
   const config = managementConfigs[module.id];
   const emptyRecord: ManageRecord = { id: 0, name: "", code: "", category: "", status: "active", detail: "", value: "", date: "สร้างเมื่อสักครู่" };
-  const [records, setRecords] = useState<ManageRecord[]>(config.records);
+  const [recordsByFeature, setRecordsByFeature] = useState<Record<string, ManageRecord[]>>(() =>
+    Object.fromEntries(module.features.map((feature, index) => [
+      feature,
+      index === 0 && !featureSamples[`${module.id}:${feature}`] ? config.records : seedFeatureRecords(module.id, feature, config),
+    ])),
+  );
   const [query, setQuery] = useState("");
   const [activeFeature, setActiveFeature] = useState(module.features[0]);
   const [draft, setDraft] = useState<ManageRecord | null>(null);
+  const [managementPage, setManagementPage] = useState(1);
+  const managementPageSize = 3;
+  const records = recordsByFeature[activeFeature] ?? [];
   const filteredRecords = records.filter((record) => `${record.name} ${record.code} ${record.category}`.toLowerCase().includes(query.toLowerCase()));
+  const managementTotalPages = Math.max(1, Math.ceil(filteredRecords.length / managementPageSize));
+  const safeManagementPage = Math.min(managementPage, managementTotalPages);
+  const visibleRecords = filteredRecords.slice((safeManagementPage - 1) * managementPageSize, safeManagementPage * managementPageSize);
 
   const saveRecord = () => {
     if (!draft?.name.trim()) return;
-    if (draft.id) setRecords((current) => current.map((record) => record.id === draft.id ? draft : record));
-    else setRecords((current) => [{ ...draft, id: Math.max(0, ...current.map((record) => record.id)) + 1 }, ...current]);
+    setRecordsByFeature((current) => {
+      const featureRecords = current[activeFeature] ?? [];
+      const nextRecords = draft.id
+        ? featureRecords.map((record) => record.id === draft.id ? draft : record)
+        : [{ ...draft, id: Math.max(0, ...featureRecords.map((record) => record.id)) + 1 }, ...featureRecords];
+      return { ...current, [activeFeature]: nextRecords };
+    });
     setDraft(null);
   };
 
@@ -598,21 +777,27 @@ function ManagementWorkspace({ module }: { module: (typeof modules)[number] }) {
       <div className="management-hero">
         <div className="management-hero-icon"><Icon name={module.icon as IconName} size={27} /></div>
         <div><p>MANAGEMENT</p><h2>{config.title}</h2><span>{config.description}</span></div>
-        <div className="management-kpis"><div><span>ทั้งหมด</span><strong>{records.length}</strong></div><div><span>ใช้งาน</span><strong>{records.filter((record) => record.status === "active").length}</strong></div><div><span>รอดำเนินการ</span><strong>{records.filter((record) => record.status === "pending").length}</strong></div></div>
+        <div className="management-kpis"><div><span>ในแท็บนี้</span><strong>{records.length}</strong></div><div><span>ใช้งาน</span><strong>{records.filter((record) => record.status === "active").length}</strong></div><div><span>รอดำเนินการ</span><strong>{records.filter((record) => record.status === "pending").length}</strong></div></div>
       </div>
-      <div className="management-tabs">{module.features.map((feature) => <button className={activeFeature === feature ? "active" : ""} onClick={() => setActiveFeature(feature)} key={feature}>{feature}</button>)}</div>
+      <div className="management-tabs">{module.features.map((feature) => <button className={activeFeature === feature ? "active" : ""} onClick={() => { setActiveFeature(feature); setManagementPage(1); setQuery(""); }} key={feature}>{feature}</button>)}</div>
       <div className="management-panel">
         <div className="management-head">
           <div><h3>{activeFeature}</h3><p>{config.description}</p></div>
           {!config.readOnly && <button onClick={() => setDraft({ ...emptyRecord, code: `${module.id.slice(0, 2).toUpperCase()}-${String(records.length + 1).padStart(3, "0")}` })}><Icon name="plus" size={16} /> เพิ่ม{config.noun}</button>}
         </div>
-        <div className="management-tools"><div><Icon name="search" size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`ค้นหา${config.noun}...`} /></div><span>{filteredRecords.length} รายการ</span></div>
+        <div className="feature-insights">
+          <div><span>ภาพรวม {activeFeature}</span><strong>{records.length} <small>รายการ</small></strong></div>
+          <div><span>{config.primaryLabel}</span><strong>{records[0]?.category || "ยังไม่มีข้อมูล"}</strong></div>
+          <div><span>{config.secondaryLabel}</span><strong>{records[0]?.value || "—"}</strong></div>
+        </div>
+        <div className="management-tools"><div><Icon name="search" size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setManagementPage(1); }} placeholder={`ค้นหา${config.noun}...`} /></div><span>{filteredRecords.length} รายการ</span></div>
         <div className="management-table-wrap">
           <table className="management-table">
             <thead><tr><th>{config.noun}</th><th>{config.primaryLabel}</th><th>รายละเอียด</th><th>{config.secondaryLabel}</th><th>อัปเดต</th><th>สถานะ</th><th /></tr></thead>
-            <tbody>{filteredRecords.map((record, index) => <tr key={record.id}><td><div className={`management-item-icon tint-${index % 4}`}><Icon name={module.icon as IconName} size={17} /></div><div><strong>{record.name}</strong><span>{record.code}</span></div></td><td><strong>{record.category}</strong></td><td><span>{record.detail}</span></td><td><strong className="management-value">{record.value}</strong></td><td><span>{record.date}</span></td><td><i className={`management-status ${record.status}`}>{record.status === "active" ? "ใช้งาน" : record.status === "pending" ? "รอดำเนินการ" : "ปิดใช้งาน"}</i></td><td>{config.readOnly ? <button title="เปิดรายงาน">›</button> : <button onClick={() => setDraft({ ...record })} title="แก้ไข"><Icon name="edit" size={15} /></button>}</td></tr>)}</tbody>
+            <tbody>{visibleRecords.map((record, index) => <tr key={record.id}><td><div className={`management-item-icon tint-${index % 4}`}><Icon name={module.icon as IconName} size={17} /></div><div><strong>{record.name}</strong><span>{record.code}</span></div></td><td><strong>{record.category}</strong></td><td><span>{record.detail}</span></td><td><strong className="management-value">{record.value}</strong></td><td><span>{record.date}</span></td><td><i className={`management-status ${record.status}`}>{record.status === "active" ? "ใช้งาน" : record.status === "pending" ? "รอดำเนินการ" : "ปิดใช้งาน"}</i></td><td>{config.readOnly ? <button title="เปิดรายงาน">›</button> : <button onClick={() => setDraft({ ...record })} title="แก้ไข"><Icon name="edit" size={15} /></button>}</td></tr>)}</tbody>
           </table>
         </div>
+        <TablePagination page={safeManagementPage} pageSize={managementPageSize} total={filteredRecords.length} onChange={setManagementPage} />
       </div>
       {draft && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setDraft(null)}><div className="management-modal">
         <button className="modal-close" onClick={() => setDraft(null)}><Icon name="close" /></button><p className="eyebrow">{draft.id ? "EDIT ITEM" : "NEW ITEM"}</p><h2>{draft.id ? `แก้ไข${config.noun}` : `เพิ่ม${config.noun}`}</h2><span className="modal-subtitle">{config.description}</span>
@@ -645,6 +830,7 @@ function ModuleHub({ module }: { module: (typeof modules)[number] }) {
 
 export default function App() {
   const [activeModule, setActiveModule] = useState("dashboard");
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("ทั้งหมด");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([
@@ -691,14 +877,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar ${sideMenuOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">S</div>
           <div><strong>SABAI</strong><span>Massage & Spa</span></div>
         </div>
         <nav>
           {modules.map((module) => (
-            <button className={activeModule === module.id ? "active" : ""} key={module.id} onClick={() => setActiveModule(module.id)}>
+            <button className={activeModule === module.id ? "active" : ""} key={module.id} onClick={() => { setActiveModule(module.id); setSideMenuOpen(false); }}>
               <Icon name={module.icon as IconName} /><span>{module.label}</span>
             </button>
           ))}
@@ -709,12 +895,16 @@ export default function App() {
           <span className="online-dot" />
         </div>
       </aside>
+      <button className={`sidebar-overlay ${sideMenuOpen ? "open" : ""}`} onClick={() => setSideMenuOpen(false)} aria-label="ปิดเมนู" />
 
       <main>
         <header>
-          <div>
-            <p className="eyebrow">วันพุธที่ 18 มิถุนายน 2568</p>
-            <h1>{modules.find((module) => module.id === activeModule)?.label}</h1>
+          <div className="header-title-group">
+            <button className="menu-toggle" onClick={() => setSideMenuOpen(true)} aria-label="เปิดเมนู"><Icon name="menu" /></button>
+            <div>
+              <p className="eyebrow">วันพุธที่ 18 มิถุนายน 2568</p>
+              <h1>{modules.find((module) => module.id === activeModule)?.label}</h1>
+            </div>
           </div>
           <div className="header-actions">
             <div className="open-status"><i /> เปิดให้บริการ <span>10:00–22:00</span></div>

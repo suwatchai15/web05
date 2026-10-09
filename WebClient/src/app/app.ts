@@ -110,7 +110,7 @@ export class App implements OnInit {
   protected roomBoardFilter: RoomBoardFilter = 'all';
   protected roomCreateOpen = false;
   protected customerSearch = '';
-  protected customerFilter: 'all' | CustomerType = 'all';
+  protected customerFilter: 'all' | CustomerType | 'phone' | 'email' | 'today' = 'all';
   protected readonly customerTypes: CustomerType[] = ['VIP', 'สมาชิก', 'ลูกค้าใหม่', 'ทั่วไป'];
   private customerSearchSequence = 0;
   protected customerCreateOpen = false;
@@ -223,12 +223,20 @@ export class App implements OnInit {
     const query = this.customerSearch.trim().toLocaleLowerCase();
     const results = query ? this.customerSearchResults : this.customers;
     return results.filter((customer) => {
-      return this.customerFilter === 'all' || customer.type === this.customerFilter;
+      if (this.customerFilter === 'all') return true;
+      if (this.customerFilter === 'phone') return !!customer.phone?.trim();
+      if (this.customerFilter === 'email') return !!customer.email?.trim();
+      if (this.customerFilter === 'today') return this.selectedAppointments.some((appt) => appt.customerId === customer.id);
+      return customer.type === this.customerFilter;
     });
   }
 
   protected get customersWithPhone(): number {
     return this.customers.filter((customer) => !!customer.phone?.trim()).length;
+  }
+
+  protected get customersWithContact(): number {
+    return this.customers.filter((customer) => !!customer.phone?.trim() || !!customer.email?.trim()).length;
   }
 
   protected get customerMemberCount(): number {
