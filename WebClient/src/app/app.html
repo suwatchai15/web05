@@ -154,7 +154,11 @@
               @if (posServices.length) {
                 <div class="pos-service-grid">
                   @for (service of posServices; track service.id) {
+<<<<<<< HEAD
                     <button type="button" class="pos-service-card" (click)="addPosService(service)" [attr.aria-label]="'เพิ่ม ' + service.name + ' ลงตะกร้า'" [draggable]="true" (dragstart)="startServiceDrag($event, service.id)" (dragend)="endServiceDrag()">
+=======
+                    <button type="button" class="pos-service-card" (click)="addPosService(service)" [attr.aria-label]="'เพิ่ม ' + service.name + ' ลงตะกร้า'">
+>>>>>>> 9df2ca2 (Add massage platform application)
                       <span class="pos-service-art" [class.sage]="posServiceTone(service) === 'sage'" [class.rose]="posServiceTone(service) === 'rose'" [class.sand]="posServiceTone(service) === 'sand'" [class.amber]="posServiceTone(service) === 'amber'">
                         <span aria-hidden="true">✦</span>
                         <small>◷ {{ service.durationMinutes }} นาที</small>
@@ -310,7 +314,11 @@
         }
 
         @if (activeSection === 'booking') {
+<<<<<<< HEAD
           <section class="booking-page" [class.drop-zone-active]="bookingDropZoneActive" (dragover)="allowServiceDrop($event)" (dragleave)="leaveServiceDropZone()" (drop)="dropServiceToBooking($event)">
+=======
+          <section class="booking-page">
+>>>>>>> 9df2ca2 (Add massage platform application)
             <header class="booking-page-heading">
               <div><p>จัดการคิวนัดหมาย</p><h2>Booking</h2></div>
               <div class="booking-open-hours"><span></span><strong>เปิดให้บริการ</strong><small>09:00–22:00</small></div>
@@ -346,11 +354,14 @@
                 @for (resource of bookingResourceRows; track resource.id) {
                   <div class="booking-timeline-row" [class.drop-target]="bookingDragOverResourceId === resource.id" [style.grid-template-columns]="'190px repeat(' + bookingTimeSlots.length + ', 72px)'" (dragover)="allowBookingDrop($event, resource.id)" (drop)="dropBooking($event, resource.id)">
                     <div class="booking-timeline-resource"><span class="booking-staff-avatar">{{ resource.name.slice(0, 1) }}</span><span><strong>{{ resource.name }}</strong><small>{{ resource.detail }}</small></span><i></i></div>
+<<<<<<< HEAD
                     @for (time of bookingTimeSlots; track time) {
                       @if (time !== '22:00') {
                         <div class="booking-timeline-cell" (click)="openQuickAddModal(resource.id, time)" [attr.aria-label]="'เพิ่มนัดหมายใหม่สำหรับ ' + resource.name + ' เวลา ' + time"></div>
                       }
                     }
+=======
+>>>>>>> 9df2ca2 (Add massage platform application)
                     @for (appointment of bookingAppointmentsForResource(resource.id); track appointment.id) {
                       <article class="booking-appointment-block" [class.blue]="bookingAppointmentTone(appointment) === 'blue'" [class.green]="bookingAppointmentTone(appointment) === 'green'" [class.orange]="bookingAppointmentTone(appointment) === 'orange'" [class.completed]="bookingAppointmentTone(appointment) === 'completed'" [class.cancelled]="bookingAppointmentTone(appointment) === 'cancelled'" [class.draggable]="appointment.status === 'Scheduled'" [class.dragging]="bookingDraggedAppointmentId === appointment.id" [style.grid-column]="bookingAppointmentGridColumn(appointment)" [draggable]="appointment.status === 'Scheduled'" (dragstart)="startBookingDrag($event, appointment)" (dragend)="endBookingDrag()">
                         <button type="button" class="booking-appointment-main" [title]="customerName(appointment.customerId) + ' · ' + serviceName(appointment.serviceId)" (click)="editBooking(appointment)">
@@ -434,6 +445,7 @@
                 </section>
               </div>
             }
+<<<<<<< HEAD
             @if (quickAddModalOpen) {
               <div class="booking-modal-backdrop" (click)="closeQuickAddModal()">
                 <section class="booking-dialog quick-add-dialog" role="dialog" aria-modal="true" aria-labelledby="quick-add-title" (click)="$event.stopPropagation()">
@@ -473,6 +485,8 @@
                 </section>
               </div>
             }
+=======
+>>>>>>> 9df2ca2 (Add massage platform application)
           </section>
         }
 

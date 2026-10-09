@@ -93,11 +93,14 @@ export class App implements OnInit {
   protected bookingLoading = false;
   protected bookingDraggedAppointmentId = '';
   protected bookingDragOverResourceId = '';
+<<<<<<< HEAD
   protected draggedServiceId = '';
   protected bookingDropZoneActive = false;
   protected quickAddModalOpen = false;
   protected quickAddStaffId = '';
   protected quickAddTime = '10:00';
+=======
+>>>>>>> 9df2ca2 (Add massage platform application)
   protected readonly roomBoardFilters: RoomBoardFilter[] = ['all', 'available', 'busy', 'booked', 'disabled'];
   protected readonly roomBoardDate = this.localDateValue(new Date());
   protected roomSearch = '';
@@ -657,6 +660,7 @@ export class App implements OnInit {
     this.editingAppointmentId = '';
   }
 
+<<<<<<< HEAD
   protected startServiceDrag(event: DragEvent, serviceId: string): void {
     if (!event.dataTransfer) {
       event.preventDefault();
@@ -755,6 +759,8 @@ export class App implements OnInit {
     });
   }
 
+=======
+>>>>>>> 9df2ca2 (Add massage platform application)
   protected roomStatus(room: Room): Exclude<RoomBoardFilter, 'all'> {
     if (!room.isActive) return 'disabled';
     const now = Date.now();
