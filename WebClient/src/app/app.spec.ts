@@ -2,7 +2,7 @@ import { provideRouter, Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { routes } from './app.routes';
-import { MassageApi } from './massage-api';
+import { MassageApi } from './core/massage-api';
 
 describe('App', () => {
   beforeEach(async () => {

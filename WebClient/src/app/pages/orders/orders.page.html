@@ -1,0 +1,34 @@
+<section class="orders-page">
+  <header class="orders-heading">
+    <div><p>รายการขายของร้าน</p><h2>Order</h2></div>
+    <label>วันที่
+      <input type="date" [ngModel]="store.selectedDate" (ngModelChange)="loadOrdersForDate($event)">
+    </label>
+  </header>
+  <div class="orders-summary">
+    <div><span>จำนวนรายการ</span><strong>{{ orderSales.length }}</strong></div>
+    <div><span>ยอดขายรวม</span><strong>฿{{ orderSalesTotal | number:'1.0-2' }}</strong></div>
+  </div>
+  <div class="orders-table-wrap">
+    <table class="orders-table" aria-label="รายการ Order">
+      <thead><tr><th>เลขที่ Order</th><th>เวลา</th><th>สาขา</th><th>รายการ</th><th>ลูกค้า</th><th>การชำระเงิน</th><th class="orders-amount">ยอดรวม</th></tr></thead>
+      <tbody>
+        @if (orderSales.length) {
+          @for (sale of orderSales; track sale.id) {
+            <tr>
+              <td class="order-number">{{ sale.saleNumber }}</td>
+              <td>{{ timeLabel(sale.createdAt) }}</td>
+              <td>{{ store.branchName(sale.branchId) }}</td>
+              <td><div class="order-table-items">@for (item of sale.items; track item.id) { <span>{{ item.serviceName }} × {{ item.quantity }}</span> }</div></td>
+              <td>{{ sale.customerId ? store.customerName(sale.customerId) : 'ลูกค้าทั่วไป' }}</td>
+              <td>{{ paymentMethodLabel(sale.paymentMethod) }}</td>
+              <td class="orders-amount order-total">฿{{ sale.total | number:'1.0-2' }}</td>
+            </tr>
+          }
+        } @else {
+          <tr><td class="orders-empty" colspan="7"><strong>ยังไม่มีรายการ Order ในวันที่เลือก</strong><span>เมื่อบันทึกการขายจากหน้า POS รายการจะแสดงที่นี่</span></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

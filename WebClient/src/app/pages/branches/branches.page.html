@@ -1,0 +1,60 @@
+<section class="welcome"><div><p class="eyebrow">จัดการสถานที่ให้บริการ</p><h1>สาขาและห้องบริการ</h1><p class="subtitle">ข้อมูลสาขา เขตเวลา และที่อยู่ของร้าน</p></div></section>
+<section class="branches-workspace">
+  <header class="branches-toolbar">
+    <div><strong>สาขาทั้งหมด</strong><span>{{ store.branches.length }} สาขา</span></div>
+    @if (store.canManage) { <button class="primary-button" type="button" (click)="openBranchCreate()">＋ เพิ่มสาขา</button> }
+  </header>
+  <div class="branches-table-wrap">
+    <table class="branches-table" aria-label="รายการสาขา">
+      <thead><tr><th>ชื่อสาขา</th><th>ที่อยู่</th><th>เขตเวลา</th>@if (store.canManage) { <th class="branches-actions-heading">จัดการ</th> }</tr></thead>
+      <tbody>
+        @if (store.branches.length) {
+          @for (branch of store.branches; track branch.id) {
+            <tr>
+              <td class="branch-name-cell">{{ branch.name }}</td>
+              <td>{{ branch.address || 'ไม่ระบุที่อยู่' }}</td>
+              <td><span class="branch-timezone">{{ branch.timeZone }}</span></td>
+              @if (store.canManage) {
+                <td class="branches-row-actions users-row-actions">
+                  <button type="button" class="users-manage-button" (click)="editBranch(branch)" [disabled]="store.busy">แก้ไข</button>
+                  <button type="button" class="users-delete-button" (click)="openBranchDeleteConfirm(branch)" [disabled]="store.busy">ลบ</button>
+                </td>
+              }
+            </tr>
+          }
+        } @else {
+          <tr><td class="branches-empty" [attr.colspan]="store.canManage ? 4 : 3">ยังไม่มีสาขา เพิ่มสาขาแรกเพื่อเริ่มต้นใช้งาน</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+@if (store.canManage && branchFormDialogOpen) {
+  <div class="user-dialog-backdrop" (click)="closeBranchForm()">
+    <section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="branch-dialog-title" (click)="$event.stopPropagation()">
+      <button class="dialog-close" type="button" aria-label="ปิด" (click)="closeBranchForm()">×</button>
+      <p class="eyebrow">BRANCH DETAILS</p>
+      <h2 id="branch-dialog-title">{{ editingBranchId ? 'แก้ไขสาขา' : 'เพิ่มสาขา' }}</h2>
+      <p class="user-dialog-description">กำหนดชื่อ ที่อยู่ และเขตเวลาประจำสาขา</p>
+      <form class="form-stack" (ngSubmit)="createBranch()">
+        <label>ชื่อสาขา<input name="branchName" [(ngModel)]="branchForm.name" required maxlength="160"></label>
+        <label>ที่อยู่<textarea name="branchAddress" [(ngModel)]="branchForm.address" rows="2" maxlength="500"></textarea></label>
+        <label>เขตเวลา<ng-select name="branchTimeZone" [(ngModel)]="branchForm.timeZone" [clearable]="false" [searchable]="false"><ng-option value="Asia/Bangkok">Asia/Bangkok</ng-option><ng-option value="UTC">UTC</ng-option></ng-select></label>
+        @if (store.errorMessage) { <div class="error-banner" role="alert">{{ store.errorMessage }}</div> }
+        <div class="form-actions"><button class="primary-button" type="submit" [disabled]="store.busy">{{ store.busy ? 'กำลังบันทึก…' : editingBranchId ? 'บันทึกการแก้ไข' : 'เพิ่มสาขา' }}</button><button class="customer-cancel-button" type="button" (click)="closeBranchForm()" [disabled]="store.busy">ยกเลิก</button></div>
+      </form>
+    </section>
+  </div>
+}
+@if (branchDeleteTarget; as deleteTarget) {
+  <div class="user-dialog-backdrop" (click)="cancelBranchDelete()">
+    <section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="branch-delete-title" (click)="$event.stopPropagation()">
+      <span class="user-delete-icon" aria-hidden="true">!</span>
+      <h2 id="branch-delete-title">ยืนยันการลบสาขา</h2>
+      <p>ต้องการลบสาขา <strong>{{ deleteTarget.name }}</strong> หรือไม่?</p>
+      <p class="branch-delete-note">สาขาที่มีนัดหมายหรือรายการขายใช้งานอยู่จะลบไม่ได้</p>
+      @if (store.errorMessage) { <div class="error-banner" role="alert">{{ store.errorMessage }}</div> }
+      <div class="user-delete-actions"><button class="customer-cancel-button" type="button" (click)="cancelBranchDelete()" [disabled]="store.busy">ยกเลิก</button><button class="user-delete-confirm-button" type="button" (click)="confirmDeleteBranch()" [disabled]="store.busy">{{ store.busy ? 'กำลังลบ…' : 'ยืนยันลบ' }}</button></div>
+    </section>
+  </div>
+}

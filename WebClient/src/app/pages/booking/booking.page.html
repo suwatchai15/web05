@@ -1,0 +1,134 @@
+<section class="booking-page timeline-page" [class.drop-zone-active]="bookingDropZoneActive" (dragover)="allowServiceDrop($event)" (dragleave)="leaveServiceDropZone()" (drop)="dropServiceToBooking($event)">
+  <div class="timeline-toolbar">
+    <div class="resource-switch">
+      <button type="button" class="active" aria-pressed="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> ตารางคิวพนักงาน</button>
+    </div>
+    <div class="timeline-date">
+      <button type="button" aria-label="วันก่อนหน้า" (click)="moveBookingDay(-1)">‹</button>
+      <label class="timeline-date-picker">
+        <span>{{ bookingWeekdayLabel }}</span><strong>{{ bookingAgendaDateLabel }}</strong>
+        <input aria-label="เลือกวันที่สำหรับ Booking" type="date" [ngModel]="store.selectedDate" (ngModelChange)="setBookingDate($event)" (click)="openDatePicker($event)">
+      </label>
+      <button type="button" aria-label="วันถัดไป" (click)="moveBookingDay(1)">›</button>
+      <button class="today" type="button" (click)="goToBookingToday()">วันนี้</button>
+    </div>
+    <button class="new-booking" type="button" (click)="newBooking()"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> จองคิวใหม่</button>
+  </div>
+
+  <div class="timeline-summary">
+    <span><b>{{ selectedBookingAppointments.length }}</b> คิวทั้งหมด @if (bookingLoading) { <em class="loading">· กำลังโหลด...</em> }</span>
+    <span><i class="reserved"></i> จองแล้ว {{ statusCounts.reserved }}</span>
+    <span><i class="started"></i> เริ่มแล้ว {{ statusCounts.started }}</span>
+    <span><i class="waiting"></i> ถึงเวลาเริ่ม {{ statusCounts.waiting }}</span>
+    <span><i class="done"></i> เสร็จแล้ว {{ statusCounts.done }}</span>
+    <span><i class="cancelled"></i> ยกเลิก {{ statusCounts.cancelled }}</span>
+  </div>
+
+  <div class="resource-timeline" role="region" aria-label="ตารางนัดหมายตามหมอนวด">
+    <div class="timeline-corner"><span>THERAPIST</span><strong>พนักงานวันนี้</strong></div>
+    <div class="timeline-times">@for (time of bookingTimeSlots; track time) { <span>{{ time }}</span> }</div>
+    <div class="resource-list">
+      @for (resource of bookingResourceRows; track resource.id; let index = $index) {
+        <div class="resource-person">
+          <div class="resource-avatar tone-{{ index % 5 }}">{{ resource.name.slice(0, 1) }}</div>
+          <div><strong>{{ resource.name }}</strong><span>{{ resource.detail }}</span></div>
+          <i></i>
+        </div>
+      } @empty {
+        <div class="timeline-empty"><strong>ยังไม่มีหมอนวดที่เปิดใช้งาน</strong><span>เพิ่มหมอนวดในเมนูทีมก่อนเริ่มจองคิว</span></div>
+      }
+    </div>
+    <div class="timeline-board">
+      @if (nowLine; as now) { <div class="now-line" [style.left.%]="now.left"><span>{{ now.label }}</span></div> }
+      @for (resource of bookingResourceRows; track resource.id) {
+        <div class="timeline-row" [class.drop-ready]="!!bookingDraggedAppointmentId" [class.drop-target]="bookingDragOverResourceId === resource.id"
+          (pointerdown)="startRangeSelection($event, resource.id)" (pointermove)="updateRangeSelection($event, resource.id)"
+          (pointerup)="finishRangeSelection($event, resource.id)" (pointercancel)="dragSelection = null"
+          (dragover)="allowBookingDrop($event, resource.id)" (drop)="dropBooking($event, resource.id)">
+          <div class="half-hour-grid">@for (slot of gridSlots; track slot) { <i></i> }</div>
+          @if (dragSelection?.resourceId === resource.id) {
+            <div class="drag-selection" [style.left.%]="slotPercent(dragSelection!.start)" [style.width.%]="slotPercent(dragSelection!.duration)"><span>{{ selectionLabel }}</span></div>
+          }
+          @for (appointment of bookingAppointmentsForResource(resource.id); track appointment.id) {
+            <article class="timeline-event {{ eventTone(appointment) }}" [class.draggable]="appointment.status === 'Scheduled'" [class.dragging]="bookingDraggedAppointmentId === appointment.id"
+              [style.left.%]="eventLeft(appointment)" [style.width.%]="eventWidth(appointment)"
+              [draggable]="appointment.status === 'Scheduled'" (dragstart)="startBookingDrag($event, appointment)" (dragend)="endBookingDrag()" (pointerdown)="$event.stopPropagation()">
+              <button type="button" class="timeline-event-main" [title]="store.customerName(appointment.customerId) + ' · ' + store.serviceName(appointment.serviceId)" (click)="editBooking(appointment)">
+                <strong>{{ store.serviceName(appointment.serviceId) }}</strong>
+                <span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>{{ store.customerName(appointment.customerId) }}</span>
+                <small>{{ timeLabel(appointment.startsAt) }}–{{ timeLabel(appointment.endsAt) }}</small>
+              </button>
+              <div class="timeline-event-status">
+                @if (appointment.status === 'Scheduled') {
+                  <button type="button" [disabled]="store.busy" (click)="startBooking(appointment)">เริ่ม</button>
+                } @else if (!appointment.paidSaleId && (appointment.status === 'InProgress' || appointment.status === 'Completed')) {
+                  <button type="button" [disabled]="store.busy" (click)="payBooking(appointment)">ชำระ</button>
+                } @else if (appointment.paidSaleId) {
+                  <span class="paid">ชำระแล้ว</span>
+                } @else {
+                  <span>{{ eventStatusLabel(appointment) }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </div>
+  </div>
+  <p class="timeline-tip">ลากบนช่องว่างเพื่อเลือกช่วงเวลาและจองคิว · ลากบล็อกคิวเพื่อย้ายเวลาหรือพนักงาน · คลิกคิวเพื่อแก้ไข · แสดงเวลา 09:00–22:00</p>
+  @if (bookingDialogOpen) {
+    <div class="booking-modal-backdrop" (click)="closeBookingDialog()">
+      <section class="booking-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-dialog-title" (click)="$event.stopPropagation()">
+        <button class="booking-dialog-close" type="button" aria-label="ปิด" (click)="closeBookingDialog()">×</button>
+        <p class="booking-dialog-eyebrow">{{ editingAppointmentId ? 'EDIT BOOKING' : 'NEW BOOKING' }}</p>
+        <h2 id="booking-dialog-title">{{ editingAppointmentId ? 'แก้ไขนัดหมาย' : 'จองคิวใหม่' }}</h2>
+        <p class="booking-dialog-subtitle">กรอกข้อมูลการจองและจัดสรรหมอนวด</p>
+        <form class="booking-form" (ngSubmit)="createAppointment()">
+          <label>ชื่อลูกค้า
+            <ng-select name="bookingCustomer" [(ngModel)]="appointmentForm.customerId" placeholder="ค้นหาหรือเลือกลูกค้า" [clearable]="false" required>
+              @for (customer of store.customers; track customer.id) { <ng-option [value]="customer.id">{{ customer.name }}{{ customer.phone ? ' · ' + customer.phone : '' }}</ng-option> }
+            </ng-select>
+          </label>
+          <label>สาขา
+            <ng-select name="bookingBranch" [(ngModel)]="appointmentForm.branchId" [clearable]="false" [searchable]="false" required>
+              <ng-option [value]="store.selectedBranchId">{{ store.currentBranchName }}</ng-option>
+            </ng-select>
+          </label>
+          <label>บริการ
+            <ng-select name="bookingService" [(ngModel)]="appointmentForm.serviceId" placeholder="เลือกบริการ" [clearable]="false" required>
+              @for (service of store.services; track service.id) { @if (service.isActive) { <ng-option [value]="service.id">{{ service.name }} · {{ service.durationMinutes }} นาที</ng-option> } }
+            </ng-select>
+          </label>
+          <div class="booking-form-row">
+            <label>วันที่<input name="bookingDate" type="date" [(ngModel)]="appointmentForm.date" required></label>
+            <label>เวลาเริ่ม
+              <ng-select name="bookingTime" [(ngModel)]="appointmentForm.time" [clearable]="false" [searchable]="false">
+                @for (time of bookingTimeSlots; track time) { @if (time !== '22:00') { <ng-option [value]="time">{{ time }}</ng-option> } }
+              </ng-select>
+            </label>
+          </div>
+          <div class="booking-form-row">
+            <label>หมอนวด
+              <ng-select name="bookingStaff" [(ngModel)]="appointmentForm.staffId" placeholder="เลือกหมอนวด" [clearable]="false" required>
+                @for (member of activeStaff; track member.id) { <ng-option [value]="member.id">{{ member.name }}</ng-option> }
+              </ng-select>
+            </label>
+            <label>ห้อง / เตียง
+              <ng-select name="bookingRoom" [(ngModel)]="appointmentForm.roomId" placeholder="เลือกห้อง" [clearable]="false" required>
+                @for (room of activeRooms; track room.id) { <ng-option [value]="room.id">{{ room.name }}</ng-option> }
+              </ng-select>
+            </label>
+          </div>
+          <label>หมายเหตุ<textarea name="bookingNotes" [(ngModel)]="appointmentForm.notes" rows="2" maxlength="1000" placeholder="เพิ่มหมายเหตุ (ถ้ามี)"></textarea></label>
+          @if (store.errorMessage) { <div class="error-banner" role="alert">{{ store.errorMessage }}</div> }
+          <div class="booking-dialog-actions">
+            <button type="button" class="booking-cancel-button" (click)="closeBookingDialog()">ยกเลิก</button>
+            <button type="submit" class="booking-confirm-button" [disabled]="store.busy || !appointmentForm.customerId || !appointmentForm.serviceId || !appointmentForm.staffId || !appointmentForm.roomId">
+              {{ store.busy ? 'กำลังบันทึก...' : editingAppointmentId ? 'บันทึกการแก้ไข' : 'ยืนยันการจอง' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+</section>

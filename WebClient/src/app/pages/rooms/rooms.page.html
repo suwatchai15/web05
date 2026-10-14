@@ -1,0 +1,51 @@
+<section class="rooms-page">
+  <div class="rooms-summary">
+    <div class="rooms-summary-copy"><p>ROOM MANAGEMENT</p><h2>Room Board</h2><span>สถานะคำนวณจากนัดหมายที่บันทึกไว้ของวันนี้</span></div>
+    <div class="rooms-metrics">
+      <div><i class="available"></i><span>ว่าง</span><strong>{{ roomStatusCounts.available }}</strong></div>
+      <div><i class="busy"></i><span>ให้บริการ</span><strong>{{ roomStatusCounts.busy }}</strong></div>
+      <div><i class="booked"></i><span>จองแล้ว</span><strong>{{ roomStatusCounts.booked }}</strong></div>
+      <div><i class="disabled"></i><span>ปิดใช้งาน</span><strong>{{ roomStatusCounts.disabled }}</strong></div>
+    </div>
+  </div>
+  <div class="room-controls">
+    <label class="room-search"><span aria-hidden="true">⌕</span><input name="roomSearch" [(ngModel)]="roomSearch" placeholder="ค้นหาห้องหรือสาขา..." aria-label="ค้นหาห้องหรือสาขา"></label>
+    <div class="room-filter-tabs">
+      @for (filter of roomBoardFilters; track filter) {
+        <button type="button" [class.active]="roomBoardFilter === filter" (click)="roomBoardFilter = filter">{{ roomFilterLabel(filter) }}<b>{{ roomStatusCounts[filter] }}</b></button>
+      }
+    </div>
+    <button class="room-refresh-button" type="button" (click)="loadRoomBoardAppointments()" [disabled]="store.busy">รีเฟรช</button>
+    <button class="room-add-button" type="button" (click)="openRoomCreate()"><span>＋</span> เพิ่มห้อง</button>
+  </div>
+  @if (roomFormDialogOpen) {
+    <app-room-form-dialog [room]="editingRoom" (closed)="closeRoomForm()" (saved)="roomSaved()" />
+  }
+  <div class="room-board-grid">
+    @for (room of filteredRooms; track room.id) {
+      <article class="room-board-card" [class.busy]="roomStatus(room) === 'busy'" [class.booked]="roomStatus(room) === 'booked'" [class.disabled]="roomStatus(room) === 'disabled'">
+        <div class="room-board-card-top">
+          <span class="room-card-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M9 21V7h8v14M14 14h.01"></path></svg></span>
+          <span class="room-board-status" [class.available]="roomStatus(room) === 'available'" [class.busy]="roomStatus(room) === 'busy'" [class.booked]="roomStatus(room) === 'booked'" [class.disabled]="roomStatus(room) === 'disabled'"><i></i>{{ roomStatusLabel(room) }}</span>
+          @if (store.canManage) { <button class="room-card-edit" type="button" [attr.aria-label]="'แก้ไข ' + room.name" title="แก้ไขห้อง" (click)="editRoom(room)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button> }
+        </div>
+        <h3>{{ room.name }}</h3>
+        <p class="room-board-branch">{{ store.branchName(room.branchId) }}</p>
+        @if (room.isActive && roomCurrentAppointment(room); as appointment) {
+          <div class="room-appointment-detail">
+            <span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>{{ store.customerName(appointment.customerId) }}</span>
+            <span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>{{ roomTimeRemaining(appointment) }}</span>
+          </div>
+        } @else {
+          <div class="room-empty-detail">{{ room.isActive ? 'พร้อมให้บริการ' : 'ห้องนี้ปิดใช้งาน' }}</div>
+        }
+        <div class="room-card-footer">
+          @if (room.isActive && roomCurrentAppointment(room); as appointment) { <span>Therapist: {{ store.staffName(appointment.staffId) }}</span> } @else { <span>ยังไม่ระบุ Therapist</span> }
+          @if (store.canManage) { <button class="room-manage-button" type="button" (click)="editRoom(room)">จัดการ</button> }
+        </div>
+      </article>
+    } @empty {
+      <div class="room-board-empty"><span aria-hidden="true">⌖</span><strong>{{ roomsInSelectedBranch.length ? 'ไม่พบห้องที่ตรงกับตัวกรอง' : 'ยังไม่มีห้องในสาขานี้' }}</strong><small>{{ roomsInSelectedBranch.length ? 'ลองเปลี่ยนคำค้นหาหรือตัวกรอง' : 'เพิ่มห้องแรกเพื่อเริ่มจัดการคิวบริการ' }}</small></div>
+    }
+  </div>
+</section>
