@@ -17,8 +17,6 @@ export class PosSession {
   /** Appointment being paid for; the sale is linked to it so Booking shows it as paid. */
   pendingAppointment: Appointment | null = null;
   lastSale: Sale | null = null;
-  /** Service currently dragged from the POS catalog onto the Booking page. */
-  draggedServiceId = '';
 
   startCheckout(appointment: Appointment, service: MassageService): void {
     this.customerId = appointment.customerId;
@@ -43,6 +41,5 @@ export class PosSession {
     this.paymentMethod = 'Cash';
     this.pendingAppointment = null;
     this.lastSale = null;
-    this.draggedServiceId = '';
   }
 }

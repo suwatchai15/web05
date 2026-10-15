@@ -106,20 +106,6 @@ export class PosPage implements OnInit {
     if (!this.pos.cart.length) this.pos.pendingAppointment = null;
   }
 
-  protected startServiceDrag(event: DragEvent, serviceId: string): void {
-    if (!event.dataTransfer) {
-      event.preventDefault();
-      return;
-    }
-    this.pos.draggedServiceId = serviceId;
-    event.dataTransfer.effectAllowed = 'copy';
-    event.dataTransfer.setData('text/plain', serviceId);
-  }
-
-  protected endServiceDrag(): void {
-    this.pos.draggedServiceId = '';
-  }
-
   protected async submitPosSale(): Promise<void> {
     const branchId = this.store.selectedBranchId;
     if (!branchId || !this.pos.cart.length || this.store.busy) return;

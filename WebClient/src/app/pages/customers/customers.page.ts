@@ -37,7 +37,7 @@ export class CustomersPage implements OnInit {
 
   ngOnInit(): void {
     // The "booked on the selected date" filter and counts read the shared appointment list.
-    void this.store.loadAppointments();
+    void this.store.loadAppointmentsOnEnter();
   }
 
   protected get selectedDateLabel(): string {
@@ -109,7 +109,7 @@ export class CustomersPage implements OnInit {
       else await this.api.createCustomer(this.customerForm);
       this.customerForm = emptyCustomerForm();
       this.editingCustomerId = '';
-      await this.store.loadWorkspace();
+      await this.store.reloadCustomers();
       await this.refreshSearchResults();
       this.customerCreateOpen = false;
     });
@@ -129,7 +129,7 @@ export class CustomersPage implements OnInit {
     if (!customer) return;
     const error = await this.store.run(async () => {
       await this.api.deleteCustomer(customer.id);
-      await this.store.loadWorkspace();
+      await this.store.reloadCustomers();
       await this.refreshSearchResults();
     });
     if (error === null) this.customerDeleteTarget = null;

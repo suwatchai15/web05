@@ -32,7 +32,7 @@ export class AppointmentsPage implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.store.loadAppointments();
+    void this.store.loadAppointmentsOnEnter();
     this.store.branchChanged.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.editingAppointmentId = '';
       this.appointmentForm = defaultAppointmentForm(this.store);

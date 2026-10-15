@@ -48,7 +48,7 @@ export class RoomFormDialog implements OnInit {
     const error = await this.store.run(async () => {
       if (room) await this.api.updateRoom(room.id, this.form);
       else await this.api.createRoom(this.form);
-      await this.store.loadWorkspace();
+      await this.store.reloadRooms();
     });
     if (error === null) this.saved.emit();
   }

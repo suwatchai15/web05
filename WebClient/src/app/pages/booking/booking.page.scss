@@ -1,17 +1,7 @@
 // Therapist timeline, ported from the "Massage Shop POS System" prototype (BookingCalendar).
 // Events are positioned with inline left/width percentages over the 09:00–22:00 range.
 
-.timeline-page {
-  display: block;
-  transition: background-color 150ms ease-out;
-
-  &.drop-zone-active {
-    background-color: #e8f5e9;
-    outline: 2px dashed #4caf50;
-    outline-offset: 6px;
-    border-radius: 8px;
-  }
-}
+.timeline-page { display: block; }
 
 .timeline-toolbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-bottom: 12px; }
 .resource-switch { display: flex; align-items: center; gap: 4px; }

@@ -91,7 +91,7 @@ export class TeamPage implements OnInit {
       if (this.editingStaffId) await this.api.updateStaff(this.editingStaffId, this.staffForm);
       else await this.api.createStaff(this.staffForm);
       this.closeStaffForm();
-      await this.store.loadWorkspace();
+      await this.store.reloadStaff();
     });
   }
 
@@ -106,14 +106,14 @@ export class TeamPage implements OnInit {
       await this.api.deactivateStaff(member.id);
       if (this.scheduleStaffId === member.id) this.clearSchedule();
       this.staffDeleteTarget = null;
-      await this.store.loadWorkspace();
+      await this.store.reloadStaff();
     });
   }
 
   protected async reactivateStaff(member: StaffMember): Promise<void> {
     await this.store.run(async () => {
       await this.api.setStaffActive(member.id, true);
-      await this.store.loadWorkspace();
+      await this.store.reloadStaff();
     });
   }
 
@@ -142,7 +142,7 @@ export class TeamPage implements OnInit {
     await this.store.run(async () => {
       await this.api.deactivateRoom(room.id);
       this.roomDeleteTarget = null;
-      await this.store.loadWorkspace();
+      await this.store.reloadRooms();
     });
   }
 

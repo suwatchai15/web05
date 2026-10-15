@@ -31,7 +31,7 @@ export class DashboardPage implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    void this.store.loadAppointments();
+    void this.store.loadAppointmentsOnEnter();
   }
 
   protected get selectedDateLabel(): string {

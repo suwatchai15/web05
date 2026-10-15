@@ -42,6 +42,10 @@ export class WorkspaceStore {
   /** Emits the new branch id whenever the working branch changes, so pages can reload branch-scoped data. */
   readonly branchChanged = new Subject<string>();
   private notifyView: () => void = () => {};
+  /** Date/branch filter the current `appointments` were fetched for. */
+  private appointmentsKey = '';
+  /** Set by loadWorkspace so the first page shown doesn't refetch the appointments it just loaded. */
+  private appointmentsJustLoaded = false;
 
   constructor(private readonly api: MassageApi) {}
 
@@ -178,14 +182,40 @@ export class WorkspaceStore {
     await this.run(() => this.reloadAppointments());
   }
 
+  /** Page-entry refresh of `appointments`, skipped when loadWorkspace has just fetched the same date and branch. */
+  async loadAppointmentsOnEnter(): Promise<void> {
+    const fresh = this.appointmentsJustLoaded && this.appointmentsKey === this.currentAppointmentsKey();
+    this.appointmentsJustLoaded = false;
+    if (!fresh) await this.loadAppointments();
+  }
+
   /** Reloads `appointments` for `selectedDate`; for use inside a `run` block. */
   async reloadAppointments(): Promise<void> {
+    const key = this.currentAppointmentsKey();
     const { from, to } = dayRange(this.selectedDate);
     this.appointments = await this.api.appointments(from, to, this.appointmentBranchFilter());
+    this.appointmentsKey = key;
   }
 
   replaceAppointment(updated: Appointment): void {
     this.appointments = this.appointments.map((item) => item.id === updated.id ? updated : item);
+  }
+
+  /** Reloads one reference list after it was edited; for use inside a `run` block. */
+  async reloadServices(): Promise<void> {
+    this.services = await this.api.services();
+  }
+
+  async reloadStaff(): Promise<void> {
+    this.staff = await this.api.staff();
+  }
+
+  async reloadRooms(): Promise<void> {
+    this.rooms = await this.api.rooms();
+  }
+
+  async reloadCustomers(): Promise<void> {
+    this.customers = await this.api.customers();
   }
 
   async loadWorkspace(): Promise<void> {
@@ -216,6 +246,7 @@ export class WorkspaceStore {
     if (activeBranches.length === 1) sessionStorage.setItem(branchStorageKey, branchId);
     await this.reloadAppointments();
     this.demoDataStatus = this.canManage ? await this.api.demoDataStatus() : null;
+    this.appointmentsJustLoaded = !this.workspaceLoaded;
     this.workspaceLoaded = true;
     if (changed) this.branchChanged.next(branchId);
   }
@@ -242,6 +273,10 @@ export class WorkspaceStore {
     this.currentUserRole = user.role;
     this.isAuthenticated = true;
     this.notifyView();
+  }
+
+  private currentAppointmentsKey(): string {
+    return `${this.selectedDate}|${this.appointmentBranchFilter() ?? 'all'}`;
   }
 
   private appointmentBranchFilter(): string | undefined {

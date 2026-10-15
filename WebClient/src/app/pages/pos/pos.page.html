@@ -19,7 +19,7 @@
     @if (posServices.length) {
       <div class="pos-service-grid">
         @for (service of posServices; track service.id) {
-          <button type="button" class="pos-service-card" (click)="addPosService(service)" [attr.aria-label]="'เพิ่ม ' + service.name + ' ลงตะกร้า'" [draggable]="true" (dragstart)="startServiceDrag($event, service.id)" (dragend)="endServiceDrag()">
+          <button type="button" class="pos-service-card" (click)="addPosService(service)" [attr.aria-label]="'เพิ่ม ' + service.name + ' ลงตะกร้า'">
             <span class="pos-service-art" [class.sage]="posServiceTone(service) === 'sage'" [class.rose]="posServiceTone(service) === 'rose'" [class.sand]="posServiceTone(service) === 'sand'" [class.amber]="posServiceTone(service) === 'amber'">
               <span aria-hidden="true">✦</span>
               <small>◷ {{ service.durationMinutes }} นาที</small>

@@ -46,7 +46,7 @@ export class ServicesPage {
       if (this.editingServiceId) await this.api.updateService(this.editingServiceId, this.serviceForm);
       else await this.api.createService(this.serviceForm);
       this.closeServiceForm();
-      await this.store.loadWorkspace();
+      await this.store.reloadServices();
     });
   }
 
@@ -60,7 +60,7 @@ export class ServicesPage {
     await this.store.run(async () => {
       await this.api.deleteService(service.id);
       this.serviceDeleteTarget = null;
-      await this.store.loadWorkspace();
+      await this.store.reloadServices();
     });
   }
 

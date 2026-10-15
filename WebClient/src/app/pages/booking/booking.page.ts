@@ -43,11 +43,12 @@ export class BookingPage implements OnInit {
   /** Pointer x where the appointment drag began, so a drop moves it by the distance dragged. */
   private bookingDragStartX = 0;
   protected bookingDragOverResourceId = '';
-  protected bookingDropZoneActive = false;
   protected dragSelection: RangeSelection | null = null;
   protected editingAppointmentId = '';
   protected appointmentForm: AppointmentForm;
   private now = Date.now();
+  /** Selected-date appointments, sorted and grouped by therapist; rebuilt only when the list or date changes. */
+  private timelineCache: { source: Appointment[]; date: string; sorted: Appointment[]; byStaff: Map<string, Appointment[]> } | null = null;
 
   constructor(
     protected readonly store: WorkspaceStore,
@@ -99,10 +100,7 @@ export class BookingPage implements OnInit {
   }
 
   protected get selectedBookingAppointments(): Appointment[] {
-    const dateValue = this.store.selectedDate;
-    return this.bookingAppointments
-      .filter((appointment) => localDateValue(new Date(appointment.startsAt)) === dateValue)
-      .sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
+    return this.timeline().sorted;
   }
 
   protected get statusCounts(): Record<EventTone, number> {
@@ -216,10 +214,7 @@ export class BookingPage implements OnInit {
   }
 
   protected bookingAppointmentsForResource(resourceId: string): Appointment[] {
-    return this.selectedBookingAppointments.filter((appointment) => {
-      const { start, end } = this.visibleRange(appointment);
-      return appointment.staffId === resourceId && end > start;
-    });
+    return this.timeline().byStaff.get(resourceId) ?? [];
   }
 
   protected startRangeSelection(event: PointerEvent, resourceId: string): void {
@@ -319,28 +314,6 @@ export class BookingPage implements OnInit {
     this.bookingDragOverResourceId = '';
   }
 
-  protected allowServiceDrop(event: DragEvent): void {
-    if (!this.pos.draggedServiceId) return;
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-    this.bookingDropZoneActive = true;
-  }
-
-  protected leaveServiceDropZone(): void {
-    this.bookingDropZoneActive = false;
-  }
-
-  protected dropServiceToBooking(event: DragEvent): void {
-    event.preventDefault();
-    const serviceId = event.dataTransfer?.getData('text/plain') || this.pos.draggedServiceId;
-    this.pos.draggedServiceId = '';
-    this.bookingDropZoneActive = false;
-    if (!serviceId || !this.store.services.some((service) => service.id === serviceId && service.isActive)) return;
-    this.editingAppointmentId = '';
-    this.appointmentForm = { ...defaultAppointmentForm(this.store), serviceId };
-    this.bookingDialogOpen = true;
-  }
-
   protected async startBooking(appointment: Appointment): Promise<void> {
     if (appointment.status !== 'Scheduled' || this.store.busy) return;
     await this.store.run(async () => {
@@ -371,6 +344,27 @@ export class BookingPage implements OnInit {
   private async reloadBookingAppointments(): Promise<void> {
     const { from, to } = dayRange(this.store.selectedDate);
     this.bookingAppointments = await this.api.appointments(from, to, this.store.selectedBranchId);
+  }
+
+  private timeline(): { sorted: Appointment[]; byStaff: Map<string, Appointment[]> } {
+    const source = this.bookingAppointments;
+    const date = this.store.selectedDate;
+    if (this.timelineCache?.source === source && this.timelineCache.date === date) return this.timelineCache;
+    const sorted = source
+      .map((appointment) => ({ appointment, start: new Date(appointment.startsAt) }))
+      .filter(({ start }) => localDateValue(start) === date)
+      .sort((first, second) => first.start.getTime() - second.start.getTime())
+      .map(({ appointment }) => appointment);
+    const byStaff = new Map<string, Appointment[]>();
+    for (const appointment of sorted) {
+      const { start, end } = this.visibleRange(appointment);
+      if (end <= start) continue;
+      const row = byStaff.get(appointment.staffId);
+      if (row) row.push(appointment);
+      else byStaff.set(appointment.staffId, [appointment]);
+    }
+    this.timelineCache = { source, date, sorted, byStaff };
+    return this.timelineCache;
   }
 
   /** Start/end as minutes since midnight, clipped to the visible 09:00–22:00 window. */
