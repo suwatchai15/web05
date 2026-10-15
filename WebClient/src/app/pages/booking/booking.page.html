@@ -103,7 +103,7 @@
             <label>วันที่<input name="bookingDate" type="date" [(ngModel)]="appointmentForm.date" required></label>
             <label>เวลาเริ่ม
               <ng-select name="bookingTime" [(ngModel)]="appointmentForm.time" [clearable]="false" [searchable]="false">
-                @for (time of bookingTimeSlots; track time) { @if (time !== '22:00') { <ng-option [value]="time">{{ time }}</ng-option> } }
+                @for (time of bookingTimeOptions; track time) { <ng-option [value]="time">{{ time }}</ng-option> }
               </ng-select>
             </label>
           </div>

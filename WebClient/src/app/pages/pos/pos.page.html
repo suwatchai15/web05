@@ -40,7 +40,7 @@
   <aside class="pos-order">
     <div class="pos-order-title">
       <div><span>รายการขาย</span><h2>ตะกร้าบริการ</h2></div>
-      <button type="button" aria-label="ล้างรายการในตะกร้า" title="ล้างรายการในตะกร้า" [disabled]="!pos.cart.length" (click)="pos.cart = []">⌫</button>
+      <button type="button" aria-label="ล้างรายการในตะกร้า" title="ล้างรายการในตะกร้า" [disabled]="!pos.cart.length" (click)="pos.clearCart()">⌫</button>
     </div>
     @if (pos.pendingAppointment; as appointment) {
       <div class="pos-booking-link" role="status">

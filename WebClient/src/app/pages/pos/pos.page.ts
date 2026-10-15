@@ -47,6 +47,8 @@ export class PosPage implements OnInit {
     this.ensureStaffAndRoom();
     void this.loadPosSales();
     this.store.branchChanged.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      // A checkout started from another branch's booking can't be paid here.
+      if (this.pos.pendingAppointment) this.pos.clearCart();
       this.pos.staffId = '';
       this.pos.roomId = '';
       this.ensureStaffAndRoom();
@@ -101,6 +103,7 @@ export class PosPage implements OnInit {
 
   protected removePosService(serviceId: string): void {
     this.pos.cart = this.pos.cart.filter((item) => item.service.id !== serviceId);
+    if (!this.pos.cart.length) this.pos.pendingAppointment = null;
   }
 
   protected startServiceDrag(event: DragEvent, serviceId: string): void {
@@ -121,7 +124,8 @@ export class PosPage implements OnInit {
     const branchId = this.store.selectedBranchId;
     if (!branchId || !this.pos.cart.length || this.store.busy) return;
     await this.store.run(async () => {
-      const paidAppointmentId = this.pos.pendingAppointment?.id ?? '';
+      const pending = this.pos.pendingAppointment;
+      const paidAppointmentId = pending?.branchId === branchId ? pending.id : '';
       const sale = await this.api.createSale({
         branchId,
         customerId: this.pos.customerId || null,

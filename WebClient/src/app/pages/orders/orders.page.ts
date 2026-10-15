@@ -39,13 +39,15 @@ export class OrdersPage implements OnInit {
   protected async loadOrdersForDate(date: string): Promise<void> {
     if (!date) return;
     this.store.selectedDate = date;
-    await this.loadOrders();
+    // selectedDate is shared, so the store's appointments must follow it too.
+    await this.loadOrders(() => this.store.reloadAppointments());
   }
 
-  private async loadOrders(): Promise<void> {
+  private async loadOrders(alongside?: () => Promise<void>): Promise<void> {
     const { from, to } = dayRange(this.store.selectedDate);
     await this.store.run(async () => {
-      this.orderSales = await this.api.sales(from, to, this.store.selectedBranchId);
+      const [sales] = await Promise.all([this.api.sales(from, to, this.store.selectedBranchId), alongside?.()]);
+      this.orderSales = sales;
     });
   }
 }

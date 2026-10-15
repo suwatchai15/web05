@@ -73,7 +73,7 @@ export class AppointmentsPage implements OnInit {
 
   protected cancelAppointmentEdit(): void {
     this.editingAppointmentId = '';
-    this.appointmentForm.notes = '';
+    this.appointmentForm = defaultAppointmentForm(this.store);
   }
 
   protected async updateAppointmentStatus(appointment: Appointment, status: 'InProgress' | 'Completed' | 'Cancelled'): Promise<void> {

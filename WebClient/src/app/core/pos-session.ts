@@ -29,6 +29,12 @@ export class PosSession {
     this.lastSale = null;
   }
 
+  /** Empties the cart and drops the appointment it was paying for. */
+  clearCart(): void {
+    this.cart = [];
+    this.pendingAppointment = null;
+  }
+
   reset(): void {
     this.cart = [];
     this.customerId = '';

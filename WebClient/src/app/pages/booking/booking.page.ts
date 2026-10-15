@@ -40,6 +40,8 @@ export class BookingPage implements OnInit {
   protected bookingLoading = false;
   protected bookingDialogOpen = false;
   protected bookingDraggedAppointmentId = '';
+  /** Pointer x where the appointment drag began, so a drop moves it by the distance dragged. */
+  private bookingDragStartX = 0;
   protected bookingDragOverResourceId = '';
   protected bookingDropZoneActive = false;
   protected dragSelection: RangeSelection | null = null;
@@ -118,6 +120,13 @@ export class BookingPage implements OnInit {
     return { left: this.minutesPercent(minutes - openingMinutes), label: minutesLabel(minutes) };
   }
 
+  /** Start times for the dialog; keeps an off-slot time (e.g. 10:15 set on the Appointments page) selectable. */
+  protected get bookingTimeOptions(): string[] {
+    const slots = this.bookingTimeSlots.slice(0, -1);
+    const time = this.appointmentForm.time;
+    return !time || slots.includes(time) ? slots : [...slots, time].sort();
+  }
+
   protected get selectionLabel(): string {
     if (!this.dragSelection) return '';
     const start = openingMinutes + this.dragSelection.start * slotMinutes;
@@ -153,7 +162,9 @@ export class BookingPage implements OnInit {
     if (!value) return;
     this.store.selectedDate = value;
     this.appointmentForm.date = value;
-    await this.loadBookingAppointments();
+    this.bookingLoading = true;
+    await this.store.run(() => Promise.all([this.reloadBookingAppointments(), this.store.reloadAppointments()]).then(() => undefined));
+    this.bookingLoading = false;
   }
 
   protected openDatePicker(event: MouseEvent): void {
@@ -225,7 +236,8 @@ export class BookingPage implements OnInit {
     const slot = this.slotFromPointer(event, row);
     const { anchor } = this.dragSelection;
     const duration = Math.max(minSelectionSlots, Math.min(maxSelectionSlots, Math.abs(slot - anchor) + 1));
-    const start = Math.min(slotCount - duration, Math.min(anchor, slot));
+    // Dragging left ends the range at the anchor slot; dragging right starts it there.
+    const start = Math.max(0, Math.min(slotCount - duration, slot < anchor ? anchor - duration + 1 : anchor));
     this.dragSelection = { resourceId, anchor, start, duration };
   }
 
@@ -256,6 +268,7 @@ export class BookingPage implements OnInit {
       return;
     }
     this.bookingDraggedAppointmentId = appointment.id;
+    this.bookingDragStartX = event.clientX;
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', appointment.id);
   }
@@ -278,11 +291,14 @@ export class BookingPage implements OnInit {
 
     const row = event.currentTarget;
     if (!(row instanceof HTMLElement)) return;
-    const durationSlots = Math.ceil((new Date(appointment.endsAt).getTime() - new Date(appointment.startsAt).getTime()) / (slotMinutes * 60_000));
-    const startSlot = Math.max(0, Math.min(slotCount - durationSlots, this.slotFromPointer(event, row)));
-    const start = new Date(`${this.store.selectedDate}T${minutesLabel(openingMinutes + startSlot * slotMinutes)}:00`);
+    const originalStart = new Date(appointment.startsAt);
+    const durationMinutes = Math.round((new Date(appointment.endsAt).getTime() - originalStart.getTime()) / 60_000);
+    const movedSlots = Math.round(((event.clientX - this.bookingDragStartX) / row.getBoundingClientRect().width) * slotCount);
+    const startMinutes = Math.max(openingMinutes, Math.min(closingMinutes - durationMinutes,
+      originalStart.getHours() * 60 + originalStart.getMinutes() + movedSlots * slotMinutes));
+    const start = new Date(`${this.store.selectedDate}T${minutesLabel(startMinutes)}:00`);
     const destinationStaff = this.store.activeStaffIn(this.store.selectedBranchId).find((member) => member.id === resourceId);
-    if (!destinationStaff || (destinationStaff.id === appointment.staffId && start.toISOString() === appointment.startsAt)) return;
+    if (!destinationStaff || (destinationStaff.id === appointment.staffId && start.getTime() === originalStart.getTime())) return;
 
     await this.store.run(async () => {
       await this.api.updateAppointment(appointment.id, {
