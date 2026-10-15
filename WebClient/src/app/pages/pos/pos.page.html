@@ -1,0 +1,174 @@
+<section class="pos-screen">
+  <div class="pos-catalog">
+    <div class="pos-catalog-tools">
+      <label class="pos-search">
+        <span aria-hidden="true">⌕</span>
+        <input name="posSearch" [(ngModel)]="posSearch" placeholder="ค้นหาบริการ..." aria-label="ค้นหาบริการ">
+      </label>
+      <div class="pos-queue"><span>คิวปัจจุบัน</span><strong>{{ posItemCount }}</strong></div>
+    </div>
+    <nav class="pos-categories" aria-label="หมวดหมู่บริการ">
+      @for (category of posCategories; track category.id) {
+        <button type="button" [class.active]="posCategory === category.id" (click)="posCategory = category.id">{{ category.label }}</button>
+      }
+    </nav>
+    <div class="pos-section-heading">
+      <div><h2>เลือกบริการ</h2><p>รายการบริการจากข้อมูลของร้าน</p></div>
+      <span>{{ posServices.length }} รายการ</span>
+    </div>
+    @if (posServices.length) {
+      <div class="pos-service-grid">
+        @for (service of posServices; track service.id) {
+          <button type="button" class="pos-service-card" (click)="addPosService(service)" [attr.aria-label]="'เพิ่ม ' + service.name + ' ลงตะกร้า'" [draggable]="true" (dragstart)="startServiceDrag($event, service.id)" (dragend)="endServiceDrag()">
+            <span class="pos-service-art" [class.sage]="posServiceTone(service) === 'sage'" [class.rose]="posServiceTone(service) === 'rose'" [class.sand]="posServiceTone(service) === 'sand'" [class.amber]="posServiceTone(service) === 'amber'">
+              <span aria-hidden="true">✦</span>
+              <small>◷ {{ service.durationMinutes }} นาที</small>
+            </span>
+            <span class="pos-service-info">
+              <strong>{{ service.name }}</strong>
+              <small>{{ service.durationMinutes }} นาที</small>
+              <span><b>฿{{ service.price | number:'1.0-2' }}</b><i aria-hidden="true">＋</i></span>
+            </span>
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="pos-empty"><span aria-hidden="true">✳</span><strong>{{ store.services.length ? 'ไม่พบบริการที่ค้นหา' : 'ยังไม่มีบริการในร้าน' }}</strong><small>{{ store.services.length ? 'ลองค้นหาหรือเลือกหมวดหมู่อื่น' : 'เพิ่มรายการบริการก่อนเริ่มใช้งาน POS' }}</small></div>
+    }
+  </div>
+
+  <aside class="pos-order">
+    <div class="pos-order-title">
+      <div><span>รายการขาย</span><h2>ตะกร้าบริการ</h2></div>
+      <button type="button" aria-label="ล้างรายการในตะกร้า" title="ล้างรายการในตะกร้า" [disabled]="!pos.cart.length" (click)="pos.cart = []">⌫</button>
+    </div>
+    @if (pos.pendingAppointment; as appointment) {
+      <div class="pos-booking-link" role="status">
+        <strong>ชำระสำหรับนัดหมาย</strong>
+        <span>{{ store.customerName(appointment.customerId) }} · {{ timeLabel(appointment.startsAt) }}</span>
+        <small>บันทึกการขายแล้ว ระบบจะทำเครื่องหมายว่าชำระแล้วใน Booking</small>
+      </div>
+    }
+    <div class="pos-selectors">
+      <label><span>⌖ สาขา</span>
+        <ng-select name="posBranch" [ngModel]="store.selectedBranchId" [clearable]="false" [searchable]="false" required>
+          <ng-option [value]="store.selectedBranchId">{{ store.currentBranchName }}</ng-option>
+        </ng-select>
+      </label>
+      <label><span>♡ ลูกค้า (ไม่บังคับ)</span>
+        <ng-select name="posCustomer" [(ngModel)]="pos.customerId" placeholder="ลูกค้าทั่วไป" [clearable]="false">
+          @for (customer of store.customers; track customer.id) { <ng-option [value]="customer.id">{{ customer.name }}</ng-option> }
+        </ng-select>
+      </label>
+      <label><span>♙ หมอนวด</span>
+        <ng-select name="posStaff" [(ngModel)]="pos.staffId" placeholder="เลือกหมอนวด" [clearable]="false">
+          @for (member of posStaff; track member.id) { <ng-option [value]="member.id">{{ member.name }}</ng-option> }
+        </ng-select>
+      </label>
+      <label><span>⌖ ห้องบริการ</span>
+        <ng-select name="posRoom" [(ngModel)]="pos.roomId" placeholder="เลือกห้อง" [clearable]="false">
+          @for (room of posRooms; track room.id) { <ng-option [value]="room.id">{{ room.name }}</ng-option> }
+        </ng-select>
+      </label>
+    </div>
+    <div class="pos-cart" aria-live="polite">
+      @if (pos.cart.length) {
+        @for (item of pos.cart; track item.service.id) {
+          <article class="pos-cart-item">
+            <span class="pos-cart-icon" [class.sage]="posServiceTone(item.service) === 'sage'" [class.rose]="posServiceTone(item.service) === 'rose'" [class.sand]="posServiceTone(item.service) === 'sand'" [class.amber]="posServiceTone(item.service) === 'amber'"></span>
+            <div class="pos-cart-detail">
+              <strong>{{ item.service.name }}</strong>
+              <small>{{ item.service.durationMinutes }} นาที</small>
+              <div class="pos-quantity">
+                <button type="button" [attr.aria-label]="'ลดจำนวน ' + item.service.name" (click)="changePosQuantity(item.service.id, -1)">−</button>
+                <b>{{ item.quantity }}</b>
+                <button type="button" [attr.aria-label]="'เพิ่มจำนวน ' + item.service.name" (click)="changePosQuantity(item.service.id, 1)">＋</button>
+              </div>
+            </div>
+            <strong class="pos-item-price">฿{{ item.service.price * item.quantity | number:'1.0-2' }}</strong>
+            <button class="pos-remove-item" type="button" [attr.aria-label]="'นำ ' + item.service.name + ' ออกจากตะกร้า'" (click)="removePosService(item.service.id)">×</button>
+          </article>
+        }
+      } @else {
+        <div class="pos-cart-empty"><span aria-hidden="true">▱</span><strong>ยังไม่มีบริการ</strong><small>เลือกบริการเพื่อเพิ่มลงในตะกร้า</small></div>
+      }
+    </div>
+    <div class="pos-summary">
+      <div><span>ยอดรวม</span><strong>฿{{ posSubtotal | number:'1.0-2' }}</strong></div>
+      <div class="pos-discount"><span>ส่วนลดสมาชิก</span><strong>฿0</strong></div>
+      <div class="pos-total"><span>ยอดสุทธิ</span><strong>฿{{ posSubtotal | number:'1.0-2' }}</strong></div>
+      <button class="pos-pay-button" type="button" [disabled]="store.busy || !pos.cart.length || !store.selectedBranchId" (click)="paymentDialogOpen = true">
+        ชำระเงิน <span>฿{{ posSubtotal | number:'1.0-2' }}</span>
+      </button>
+      <p class="pos-payment-note">เลือกวิธีชำระเงินก่อนบันทึกการขาย</p>
+      @if (pos.lastSale) {
+        <div class="pos-sale-success" role="status">
+          <strong>บันทึกการขายแล้ว</strong>
+          <span>{{ pos.lastSale.saleNumber }} · ฿{{ pos.lastSale.total | number:'1.0-2' }}</span>
+          <small>{{ paymentMethodLabel(pos.lastSale.paymentMethod) }} · {{ timeLabel(pos.lastSale.createdAt) }}</small>
+        </div>
+      }
+      <div class="pos-recent-sales">
+        <strong>รายการขายวันนี้</strong>
+        @if (posSales.length) {
+          @for (sale of posSales; track sale.id) {
+            <article><span><b>{{ sale.saleNumber }}</b><small>{{ store.branchName(sale.branchId) }} · {{ timeLabel(sale.createdAt) }}</small></span><strong>฿{{ sale.total | number:'1.0-2' }}</strong></article>
+          }
+        } @else {
+          <small>ยังไม่มีรายการขายวันนี้</small>
+        }
+      </div>
+    </div>
+  </aside>
+  @if (paymentDialogOpen) {
+    <div class="pos-modal-backdrop" (click)="paymentDialogOpen = false">
+      <section class="payment-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title" (click)="$event.stopPropagation()">
+        <button class="dialog-close" type="button" aria-label="ปิด" (click)="paymentDialogOpen = false">×</button>
+        <p class="dialog-eyebrow">สรุปการชำระเงิน</p>
+        <h2 id="payment-dialog-title">เลือกวิธีชำระเงิน</h2>
+        <div class="payment-dialog-total"><span>ยอดสุทธิ</span><strong>฿{{ posSubtotal | number:'1.0-2' }}</strong></div>
+        <div class="payment-method-options" role="group" aria-label="วิธีชำระเงิน">
+          <button type="button" [class.selected]="pos.paymentMethod === 'Cash'" [attr.aria-pressed]="pos.paymentMethod === 'Cash'" (click)="pos.paymentMethod = 'Cash'">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H21v16H5a2 2 0 0 1-2-2V6.5Z"/><path d="M3 7h18"/><path d="M16 14h.01"/></svg><span>เงินสด</span>
+          </button>
+          <button type="button" [class.selected]="pos.paymentMethod === 'BankTransfer'" [attr.aria-pressed]="pos.paymentMethod === 'BankTransfer'" (click)="pos.paymentMethod = 'BankTransfer'">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h5v5H3zM16 3h5v5h-5zM3 16h5v5H3zM16 16h2v2h-2zM20 16h1v5h-5"/></svg><span>QR พร้อมเพย์</span>
+          </button>
+          <button type="button" [class.selected]="pos.paymentMethod === 'Card'" [attr.aria-pressed]="pos.paymentMethod === 'Card'" (click)="pos.paymentMethod = 'Card'">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span>บัตรเครดิต</span>
+          </button>
+        </div>
+        <p class="payment-note">บันทึกยอดขายและวิธีชำระเงินเท่านั้น ไม่มีการตัดเงินจริงผ่านระบบ</p>
+        <button class="payment-confirm-button" type="button" [disabled]="store.busy" (click)="submitPosSale()">{{ store.busy ? 'กำลังบันทึก...' : 'ยืนยันชำระเงิน' }} <span>฿{{ posSubtotal | number:'1.0-2' }}</span></button>
+      </section>
+    </div>
+  }
+  @if (receiptDialogOpen && pos.lastSale; as sale) {
+    <div class="pos-modal-backdrop receipt-backdrop" (click)="receiptDialogOpen = false">
+      <section class="receipt-dialog" role="dialog" aria-modal="true" aria-labelledby="receipt-dialog-title" (click)="$event.stopPropagation()">
+        <div class="receipt-paper">
+          <p class="receipt-brand">SABAI MASSAGE &amp; SPA</p>
+          <h2 id="receipt-dialog-title">ใบเสร็จรับเงิน</h2>
+          <p class="receipt-branch">{{ store.branchName(sale.branchId) }}</p>
+          <div class="receipt-meta"><span>เลขที่ {{ sale.saleNumber }}</span><span>{{ timeLabel(sale.createdAt) }} · {{ sale.createdAt | date:'dd/MM/yyyy' }}</span></div>
+          <div class="receipt-items">
+            @for (item of sale.items; track item.id) {
+              <div><span>{{ item.serviceName }} × {{ item.quantity }}</span><strong>฿{{ item.lineTotal | number:'1.0-2' }}</strong></div>
+            }
+          </div>
+          <div class="receipt-totals">
+            <div><span>ยอดรวม</span><strong>฿{{ sale.subtotal | number:'1.0-2' }}</strong></div>
+            <div><span>ส่วนลด</span><strong>฿{{ sale.discount | number:'1.0-2' }}</strong></div>
+            <div class="receipt-grand-total"><span>ยอดสุทธิ</span><strong>฿{{ sale.total | number:'1.0-2' }}</strong></div>
+          </div>
+          <p class="receipt-payment">ชำระโดย {{ paymentMethodLabel(sale.paymentMethod) }}</p>
+          <p class="receipt-thankyou">ขอบคุณที่ใช้บริการ</p>
+        </div>
+        <div class="receipt-actions">
+          <button class="receipt-close-button" type="button" (click)="receiptDialogOpen = false">ปิด</button>
+          <button class="receipt-print-button" type="button" (click)="printReceipt()">พิมพ์ใบเสร็จ</button>
+        </div>
+      </section>
+    </div>
+  }
+</section>

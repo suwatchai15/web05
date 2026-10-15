@@ -1,0 +1,93 @@
+<section class="team-hero">
+  <div class="team-hero-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">@for (path of iconPaths['users-round']; track $index) { <path [attr.d]="path" /> }</svg></div>
+  <div class="team-hero-copy"><p>MANAGEMENT</p><h2>Therapist / พนักงาน</h2><span>จัดการทีมหมอนวด ตารางงาน และห้องบริการของสาขา</span></div>
+  <div class="team-hero-metrics">
+    <div><span>พนักงานทั้งหมด</span><strong>{{ staffInSelectedBranch.length }}</strong></div>
+    <div><span>พร้อมให้บริการ</span><strong>{{ selectedBranchActiveStaffCount }}</strong></div>
+    <div><span>ปิดใช้งาน</span><strong>{{ staffInSelectedBranch.length - selectedBranchActiveStaffCount }}</strong></div>
+  </div>
+</section>
+<section class="panel team-management-panel">
+  <div class="team-tabs" role="tablist" aria-label="จัดการทีมและห้องบริการ"><button type="button" role="tab" class="team-tab-button" [class.active]="teamTab === 'staff'" [attr.aria-selected]="teamTab === 'staff'" (click)="teamTab = 'staff'">ทีมหมอนวด <span>{{ staffInSelectedBranch.length }}</span></button><button type="button" role="tab" class="team-tab-button" [class.active]="teamTab === 'rooms'" [attr.aria-selected]="teamTab === 'rooms'" (click)="teamTab = 'rooms'">ห้องบริการ <span>{{ roomsInSelectedBranch.length }}</span></button><button type="button" role="tab" class="team-tab-button" [class.active]="teamTab === 'schedule'" [attr.aria-selected]="teamTab === 'schedule'" (click)="teamTab = 'schedule'">ตารางงาน</button></div>
+  @if (teamTab === 'staff') {
+    <div class="team-panel-heading">
+      <div><h2>ทีมหมอนวด</h2><p>{{ selectedBranchActiveStaffCount }} คนพร้อมให้บริการ</p></div>
+      @if(store.canManage){<button class="primary-button" type="button" (click)="openStaffCreate()">＋ เพิ่มหมอนวด</button>}
+    </div>
+    <div class="team-tools">
+      <label class="team-search"><span aria-hidden="true">⌕</span><input name="staffSearch" [(ngModel)]="staffSearch" placeholder="ค้นหาชื่อหรืออีเมล..." aria-label="ค้นหาหมอนวด"></label>
+      <span>{{ filteredStaff.length }} รายการ</span>
+    </div>
+    @if (!filteredStaff.length) { <div class="empty-state">{{ staffInSelectedBranch.length ? 'ไม่พบหมอนวดที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลทีมหมอนวดในสาขานี้' }}</div> } @else {
+      <div class="team-table-wrap"><table class="team-table"><thead><tr><th>ชื่อหมอนวด</th><th>อีเมล</th><th>สถานะ</th>@if(store.canManage){<th>จัดการ</th>}</tr></thead><tbody>
+        @for (member of filteredStaff; track member.id) {
+          <tr><td><div class="team-person"><span class="team-person-avatar">{{ member.name.slice(0, 1) }}</span><div><strong>{{ member.name }}</strong><small>{{ store.branchName(member.branchId) }}</small></div></div></td><td>{{ member.email || '—' }}</td><td><span class="status" [class.confirmed]="member.isActive">{{ member.isActive ? 'พร้อมให้บริการ' : 'ปิดใช้งาน' }}</span></td>@if(store.canManage){<td class="users-row-actions"><button class="users-manage-button" type="button" (click)="editStaff(member)" [disabled]="store.busy">แก้ไข</button>@if(member.isActive){<button class="users-delete-button" type="button" (click)="staffDeleteTarget = member" [disabled]="store.busy">ปิดใช้งาน</button>}@else{<button class="users-manage-button" type="button" (click)="reactivateStaff(member)" [disabled]="store.busy">เปิดใช้งาน</button>}</td>}</tr>
+        }
+      </tbody></table></div>
+    }
+  } @else if (teamTab === 'rooms') {
+    <div class="panel-heading"><div><h2>ห้องบริการ</h2><p>{{ roomsInSelectedBranch.length }} ห้อง</p></div>@if(store.canManage){<button class="primary-button" type="button" (click)="openRoomCreate()">＋ เพิ่มห้อง</button>}</div>
+    @if (!roomsInSelectedBranch.length) { <div class="empty-state">ยังไม่มีห้องบริการในสาขานี้</div> } @else {
+      <div class="team-table-wrap"><table class="team-table"><thead><tr><th>ชื่อห้อง</th><th>สาขา</th><th>สถานะ</th>@if(store.canManage){<th>จัดการ</th>}</tr></thead><tbody>@for (room of roomsInSelectedBranch; track room.id) { <tr><td><strong>{{ room.name }}</strong></td><td>{{ store.branchName(room.branchId) }}</td><td><span class="status" [class.confirmed]="room.isActive">{{ room.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span></td>@if(store.canManage){<td class="users-row-actions"><button class="users-manage-button" type="button" (click)="editRoom(room)" [disabled]="store.busy">แก้ไข</button>@if(room.isActive){<button class="users-delete-button" type="button" (click)="roomDeleteTarget = room" [disabled]="store.busy">ลบ</button>}</td>}</tr> }</tbody></table></div>
+    }
+  }
+</section>
+@if (staffFormDialogOpen) {
+  <div class="user-dialog-backdrop" (click)="closeStaffForm()"><section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="staff-dialog-title" (click)="$event.stopPropagation()"><div class="panel-heading"><div><h2 id="staff-dialog-title">{{ editingStaffId ? 'แก้ไขหมอนวด' : 'เพิ่มหมอนวด' }}</h2><p>กรอกข้อมูลทีมงานของสาขานี้</p></div><button class="icon-button" type="button" aria-label="ปิด" (click)="closeStaffForm()">×</button></div><form class="form-stack" (ngSubmit)="createStaff()"><label>สาขา<ng-select name="staffBranch" [(ngModel)]="staffForm.branchId" [clearable]="false" [searchable]="false" required>@for(branch of store.branches; track branch.id){@if(branch.isActive){<ng-option [value]="branch.id">{{ branch.name }}</ng-option>}}</ng-select></label><label>ชื่อหมอนวด<input name="staffName" [(ngModel)]="staffForm.name" required maxlength="160"></label><label>อีเมล (ถ้ามี)<input name="staffEmail" type="email" [(ngModel)]="staffForm.email"></label><div class="form-actions"><button class="primary-button" type="submit" [disabled]="store.busy || !store.branches.length">{{ editingStaffId ? 'บันทึกการแก้ไข' : 'เพิ่มหมอนวด' }}</button><button class="customer-cancel-button" type="button" (click)="closeStaffForm()">ยกเลิก</button></div></form></section></div>
+}
+@if (staffDeleteTarget; as member) {
+  <div class="user-dialog-backdrop" (click)="cancelStaffDelete()"><section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="staff-delete-title" (click)="$event.stopPropagation()"><div class="user-delete-icon">!</div><h2 id="staff-delete-title">ยืนยันลบหมอนวด</h2><p>ต้องการลบ <strong>{{ member.name }}</strong> ออกจากรายชื่อที่เปิดใช้งานหรือไม่? ข้อมูลประวัติเดิมจะยังคงอยู่</p><div class="user-delete-actions"><button type="button" class="customer-cancel-button" (click)="cancelStaffDelete()">ยกเลิก</button><button type="button" class="user-delete-confirm-button" [disabled]="store.busy" (click)="confirmDeactivateStaff()">ยืนยันลบ</button></div></section></div>
+}
+@if (roomFormDialogOpen) {
+  <app-room-form-dialog [room]="editingRoom" (closed)="closeRoomForm()" (saved)="closeRoomForm()" />
+}
+@if (roomDeleteTarget; as room) {
+  <div class="user-dialog-backdrop" (click)="cancelRoomDelete()"><section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="room-delete-title" (click)="$event.stopPropagation()"><div class="user-delete-icon">!</div><h2 id="room-delete-title">ยืนยันลบห้องบริการ</h2><p>ต้องการลบ <strong>{{ room.name }}</strong> ออกจากห้องที่เปิดใช้งานหรือไม่? ข้อมูลประวัติเดิมจะยังคงอยู่</p><div class="user-delete-actions"><button type="button" class="customer-cancel-button" (click)="cancelRoomDelete()">ยกเลิก</button><button type="button" class="user-delete-confirm-button" [disabled]="store.busy" (click)="confirmDeactivateRoom()">ยืนยันลบ</button></div></section></div>
+}
+@if (teamTab === 'schedule') {
+  <section class="panel schedule-panel">
+  <div class="panel-heading"><div><h2>ตารางเวลาทำงานและวันหยุด</h2><p>กำหนดเวลาประจำสัปดาห์และข้อยกเว้นรายวัน ระบบจะไม่รับนัดนอกเวลาทำงาน</p></div></div>
+  @if (!staffInSelectedBranch.length) { <div class="empty-state">เพิ่มหมอนวดในสาขานี้ก่อนจึงจะกำหนดตารางทำงานได้</div> } @else {
+    <label class="schedule-staff-select">เลือกหมอนวด
+      <ng-select name="scheduleStaff" [ngModel]="scheduleStaffId" (ngModelChange)="selectScheduleStaff($event)" placeholder="เลือกหมอนวด" [clearable]="false">
+        @for (member of staffInSelectedBranch; track member.id) { <ng-option [value]="member.id">{{ member.name }}</ng-option> }
+      </ng-select>
+    </label>
+    @if (selectedScheduleStaff) {
+      <div class="schedule-section-heading"><div><strong>เวลาทำงานประจำ</strong><small>ปล่อยวันว่างไว้เพื่อกำหนดเป็นวันหยุดประจำ · เพิ่มได้หลายช่วงต่อวัน</small></div>@if (store.canManage) { <button class="primary-button" type="button" [disabled]="store.busy" (click)="saveSchedule()">บันทึกตารางรายสัปดาห์</button> }</div>
+      <div class="weekly-schedule">
+        @for (day of scheduleDays; track day.dayOfWeek) {
+          <div class="schedule-day"><strong>{{ dayName(day.dayOfWeek) }}</strong>
+            <div class="schedule-shifts">
+              @if (!day.shifts.length) { <span class="closed-label">วันหยุด</span> }
+              @for (shift of day.shifts; track $index) {
+                <div class="shift-fields"><input [name]="'start-' + day.dayOfWeek + '-' + $index" type="time" [(ngModel)]="shift.startTime" [disabled]="!store.canManage" [attr.aria-label]="'เวลาเริ่ม ' + dayName(day.dayOfWeek)"><span>ถึง</span><input [name]="'end-' + day.dayOfWeek + '-' + $index" type="time" [(ngModel)]="shift.endTime" [disabled]="!store.canManage" [attr.aria-label]="'เวลาสิ้นสุด ' + dayName(day.dayOfWeek)">@if (store.canManage) { <button class="remove-shift" type="button" (click)="removeShift(day, $index)" [attr.aria-label]="'ลบช่วงเวลาของวัน' + dayName(day.dayOfWeek)">×</button> }</div>
+              }
+            </div>
+            @if (store.canManage) { <button class="add-shift" type="button" (click)="addShift(day)">＋ เพิ่มช่วงเวลา</button> }
+          </div>
+        }
+      </div>
+      <hr>
+      <div class="schedule-section-heading"><div><strong>วันหยุดและเวลาพิเศษ</strong><small>เพิ่มวันหยุดเต็มวัน หรือกำหนดช่วงเวลาทำงานเฉพาะวันที่</small></div></div>
+      @if (store.canManage) {
+        <form class="exception-form" (ngSubmit)="createScheduleException()">
+          <label>วันที่<input name="exceptionDate" type="date" [(ngModel)]="exceptionForm.date" required></label>
+          <label class="checkbox-label"><input name="isDayOff" type="checkbox" [(ngModel)]="exceptionForm.isDayOff"> หยุดทั้งวัน</label>
+          @if (!exceptionForm.isDayOff) {
+            <label>เริ่ม<input name="exceptionStart" type="time" [(ngModel)]="exceptionForm.startTime" required></label>
+            <label>ถึง<input name="exceptionEnd" type="time" [(ngModel)]="exceptionForm.endTime" required></label>
+          }
+          <button class="primary-button" type="submit" [disabled]="store.busy">เพิ่มข้อยกเว้น</button>
+        </form>
+      }
+      @if (!scheduleExceptions.length) { <div class="empty-state compact-empty">ยังไม่มีวันหยุดหรือเวลาเฉพาะวัน</div> }
+      <div class="exception-list">
+        @for (exception of scheduleExceptions; track exception.id) {
+          <article class="resource-row"><span class="setup-icon peach">◷</span><span><strong>{{ exception.date | date:'longDate' }}</strong><small>{{ exceptionLabel(exception) }}</small></span>@if (store.canManage) { <button class="remove-shift" type="button" (click)="deleteScheduleException(exception)" [disabled]="store.busy" aria-label="ลบข้อยกเว้น">×</button> }</article>
+        }
+      </div>
+    }
+  }
+</section>
+}

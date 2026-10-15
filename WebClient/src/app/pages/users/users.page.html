@@ -1,0 +1,74 @@
+<section class="welcome"><div><p class="eyebrow">จัดการสิทธิ์เข้าระบบ</p><h1>บัญชีผู้ใช้</h1><p class="subtitle">จัดการบัญชีผู้จัดการและพนักงานในร้าน</p></div></section>
+@if (store.canManage) {
+  <section class="users-workspace">
+    <header class="users-toolbar">
+      <div><strong>บัญชีในร้าน</strong><span>{{ users.length }} บัญชี</span></div>
+      <button class="primary-button" type="button" (click)="openUserCreate()">＋ เพิ่มผู้ใช้</button>
+    </header>
+    <div class="users-table-wrap">
+      <table class="users-table" aria-label="บัญชีผู้ใช้ในร้าน">
+        <thead><tr><th>อีเมล</th><th>บทบาท</th><th>สถานะ</th><th class="users-actions-heading">จัดการ</th></tr></thead>
+        <tbody>
+          @if (users.length) {
+            @for (user of users; track user.id) {
+              <tr>
+                <td class="users-email">{{ user.email }}</td>
+                <td>{{ user.role === 'Owner' ? 'เจ้าของร้าน' : user.role === 'Manager' ? 'ผู้จัดการ' : 'พนักงาน' }}</td>
+                <td><span class="status" [class.confirmed]="user.isActive">{{ user.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span></td>
+                <td class="users-row-actions">
+                  <button class="users-manage-button" type="button" (click)="editUser(user)" [disabled]="store.busy || (user.role === 'Owner' && store.currentUserRole !== 'Owner')" [title]="user.role === 'Owner' && store.currentUserRole !== 'Owner' ? 'เฉพาะเจ้าของร้านแก้ไขบัญชีเจ้าของร้านได้' : ''">แก้ไข</button>
+                  <button class="users-delete-button" type="button" (click)="openUserDeleteConfirm(user)" [disabled]="store.busy">ลบ</button>
+                  @if (user.role !== 'Owner' && user.id !== store.currentUserId) {
+                    <button type="button" (click)="toggleUserActive(user)" [disabled]="store.busy">{{ user.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน' }}</button>
+                  }
+                </td>
+              </tr>
+            }
+          } @else {
+            <tr><td class="users-empty" colspan="4">ยังไม่มีบัญชีผู้ใช้อื่นในร้าน</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  @if (userDialogOpen) {
+    <div class="user-dialog-backdrop" (click)="closeUserDialog()">
+      <section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="user-dialog-title" (click)="$event.stopPropagation()">
+        <button class="dialog-close" type="button" aria-label="ปิด" (click)="closeUserDialog()">×</button>
+        <p class="eyebrow">USER ACCOUNT</p>
+        <h2 id="user-dialog-title">{{ editingUserId ? 'แก้ไขบัญชีผู้ใช้' : 'เพิ่มบัญชีผู้ใช้' }}</h2>
+        <p class="user-dialog-description">กำหนดอีเมลและบทบาทการใช้งานในร้าน</p>
+        <form class="form-stack" (ngSubmit)="saveUser()">
+          <label>อีเมล<input name="userEmail" type="email" [(ngModel)]="userForm.email" required maxlength="254" autocomplete="username"></label>
+          <label>รหัสผ่าน{{ editingUserId ? 'ใหม่ (เว้นว่างหากไม่เปลี่ยน)' : 'เริ่มต้น' }}<input name="userPassword" type="password" [(ngModel)]="userForm.password" [required]="!editingUserId" minlength="12" autocomplete="new-password"></label>
+          @if (userForm.role === 'Owner') {
+            <label>บทบาท<input name="userOwnerRole" value="เจ้าของร้าน" disabled></label>
+          } @else {
+            <label>บทบาท<ng-select name="userRole" [(ngModel)]="userForm.role" [disabled]="editingUserId === store.currentUserId" [clearable]="false" [searchable]="false"><ng-option value="Staff">พนักงาน</ng-option><ng-option value="Manager">ผู้จัดการ</ng-option></ng-select></label>
+          }
+          @if (store.errorMessage) { <div class="error-banner" role="alert">{{ store.errorMessage }}</div> }
+          <div class="form-actions"><button class="primary-button" type="submit" [disabled]="store.busy">{{ editingUserId ? 'บันทึกการแก้ไข' : 'สร้างบัญชี' }}</button><button class="customer-cancel-button" type="button" (click)="closeUserDialog()">ยกเลิก</button></div>
+        </form>
+      </section>
+    </div>
+  }
+  @if (userDeleteTarget; as deleteTarget) {
+    <div class="user-dialog-backdrop" (click)="cancelUserDelete()">
+      <section class="user-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="user-delete-title" (click)="$event.stopPropagation()">
+        <span class="user-delete-icon" aria-hidden="true">!</span>
+        <h2 id="user-delete-title">ยืนยันการลบบัญชี</h2>
+        <p>ต้องการลบบัญชี <strong>{{ deleteTarget.email }}</strong> หรือไม่? การลบนี้ไม่สามารถย้อนกลับได้</p>
+        @if (deleteTarget.role === 'Owner' || deleteTarget.id === store.currentUserId) {
+          <div class="error-banner" role="status">{{ deleteTarget.role === 'Owner' ? 'ไม่สามารถลบบัญชีเจ้าของร้านได้' : 'ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่ได้' }}</div>
+        }
+        @if (store.errorMessage) { <div class="error-banner" role="alert">{{ store.errorMessage }}</div> }
+        <div class="user-delete-actions">
+          <button class="customer-cancel-button" type="button" (click)="cancelUserDelete()" [disabled]="store.busy">ยกเลิก</button>
+          <button class="user-delete-confirm-button" type="button" (click)="confirmDeleteUser()" [disabled]="store.busy || deleteTarget.role === 'Owner' || deleteTarget.id === store.currentUserId">{{ store.busy ? 'กำลังลบ…' : 'ยืนยันลบ' }}</button>
+        </div>
+      </section>
+    </div>
+  }
+} @else {
+  <section class="panel"><div class="empty-state">เฉพาะเจ้าของร้านหรือผู้จัดการเท่านั้นที่จัดการบัญชีผู้ใช้ได้</div></section>
+}

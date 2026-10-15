@@ -1,0 +1,18 @@
+<section class="welcome"><div><p class="eyebrow">จัดการบริการ</p><h1>บริการและราคา</h1><p class="subtitle">กำหนดรายการนวด ระยะเวลา และราคาต่อครั้ง</p></div></section>
+<section class="panel">
+  <div class="panel-heading"><div><h2>รายการบริการ</h2><p>{{ store.services.length }} รายการ</p></div>@if (store.canManage) { <button class="primary-button" type="button" (click)="openServiceCreate()">＋ เพิ่มบริการ</button> }</div>
+  @if (!store.services.length) { <div class="empty-state">ยังไม่มีบริการ เพิ่มรายการแรกของร้านได้เลย</div> } @else {
+    <div class="team-table-wrap"><table class="team-table"><thead><tr><th>ชื่อบริการ</th><th>ระยะเวลา</th><th>ราคา</th><th>สถานะ</th>@if(store.canManage){<th>จัดการ</th>}</tr></thead><tbody>
+      @for (service of store.services; track service.id) { <tr><td><strong>{{ service.name }}</strong></td><td>{{ service.durationMinutes }} นาที</td><td>฿{{ service.price | number:'1.2-2' }}</td><td><span class="status" [class.confirmed]="service.isActive">{{ service.isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span></td>@if(store.canManage){<td class="users-row-actions"><button class="users-manage-button" type="button" (click)="editService(service)" [disabled]="store.busy">แก้ไข</button><button class="users-delete-button" type="button" (click)="serviceDeleteTarget = service" [disabled]="store.busy">ลบ</button></td>}</tr> }
+    </tbody></table></div>
+  }
+</section>
+@if (serviceFormDialogOpen) {
+  <div class="user-dialog-backdrop" (click)="closeServiceForm()"><section class="user-dialog" role="dialog" aria-modal="true" aria-labelledby="service-dialog-title" (click)="$event.stopPropagation()">
+    <div class="panel-heading"><div><h2 id="service-dialog-title">{{ editingServiceId ? 'แก้ไขบริการ' : 'เพิ่มบริการ' }}</h2><p>กำหนดชื่อบริการ ระยะเวลา และราคา</p></div><button class="icon-button" type="button" aria-label="ปิด" (click)="closeServiceForm()">×</button></div>
+    <form class="form-stack" (ngSubmit)="createService()"><label>ชื่อบริการ<input name="serviceName" [(ngModel)]="serviceForm.name" required maxlength="160"></label><div class="form-row"><label>ระยะเวลา (นาที)<input name="duration" type="number" min="5" max="1440" step="5" [(ngModel)]="serviceForm.durationMinutes" required></label><label>ราคา (บาท)<input name="price" type="number" min="0" step="0.01" [(ngModel)]="serviceForm.price" required></label></div><div class="form-actions"><button class="primary-button" type="submit" [disabled]="store.busy">{{ editingServiceId ? 'บันทึกการแก้ไข' : 'เพิ่มบริการ' }}</button><button class="customer-cancel-button" type="button" (click)="closeServiceForm()">ยกเลิก</button></div></form>
+  </section></div>
+}
+@if (serviceDeleteTarget; as service) {
+  <div class="user-dialog-backdrop" (click)="cancelServiceDelete()"><section class="branch-delete-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="service-delete-title" (click)="$event.stopPropagation()"><div class="user-delete-icon">!</div><h2 id="service-delete-title">ยืนยันลบบริการ</h2><p>ต้องการลบบริการ <strong>{{ service.name }}</strong> หรือไม่?</p><div class="user-delete-actions"><button type="button" class="customer-cancel-button" (click)="cancelServiceDelete()">ยกเลิก</button><button type="button" class="user-delete-confirm-button" [disabled]="store.busy" (click)="confirmDeleteService()">ยืนยันลบ</button></div></section></div>
+}

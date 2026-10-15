@@ -7,7 +7,9 @@ npm install
 npm start
 ```
 
-เปิดใช้งานที่ `http://localhost:4200` ข้อมูลบนหน้าเริ่มต้นเป็นข้อมูลตัวอย่าง ไม่ได้บันทึกหรือเชื่อมต่อกับ API
+เปิดใช้งานที่ `http://localhost:4200` ต้องรัน API ที่พอร์ต 5080 ก่อน (`/api` ถูก proxy ผ่าน `proxy.conf.json`) ดูการตั้งค่า API และบัญชีทดลองได้ที่ README หลักของ repository
+
+โครงสร้าง: `src/app/app.*` เป็น shell (login, เมนู, เลือกสาขา) แต่ละเมนูเป็นเพจใน `src/app/pages/` ข้อมูลที่ใช้ร่วมกันอยู่ใน `src/app/core/workspace.store.ts`
 
 ```powershell
 npm test

@@ -1,0 +1,63 @@
+<section class="dashboard-page">
+  <div class="dashboard-intro">
+    <div><p>ภาพรวมร้าน · {{ selectedDateLabel }}</p><h2>ยินดีต้อนรับ</h2><span>สรุปการนัดหมายและข้อมูลการให้บริการของร้าน</span></div>
+    <div class="dashboard-intro-actions">
+      <label>สาขาที่แสดง
+        <ng-select name="dashboardBranch" [(ngModel)]="store.dashboardBranchId" (ngModelChange)="dashboardBranchChanged()" [clearable]="false" [searchable]="false">
+          <ng-option value="all">ทุกสาขา</ng-option>
+          @for (branch of store.branches; track branch.id) { @if (branch.isActive) { <ng-option [value]="branch.id">{{ branch.name }}</ng-option> } }
+        </ng-select>
+      </label>
+      <button type="button" (click)="selectSection('appointments')"><span>＋</span> เพิ่มนัดหมาย</button>
+    </div>
+  </div>
+  @if (demoSeedMessage) { <div class="demo-seed-message" role="status">{{ demoSeedMessage }}</div> }
+  @if (store.demoDataStatus?.enabled && !store.demoDataStatus?.seeded) {
+    <div class="demo-seed-panel">
+      <div><strong>เริ่มทดลองใช้งานด้วยข้อมูลตัวอย่าง</strong><span>เพิ่มบริการ ลูกค้า หมอนวด ห้อง นัดหมาย และรายการขายตัวอย่างลงในร้านนี้</span></div>
+      <button type="button" [disabled]="store.busy" (click)="seedDemoData()">{{ store.busy ? 'กำลังเพิ่มข้อมูล...' : 'เพิ่มข้อมูลตัวอย่าง' }}</button>
+    </div>
+  }
+  <div class="metric-grid">
+    <article class="metric-card featured"><div class="metric-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">@for (path of iconPaths.wallet; track $index) { <path [attr.d]="path" /> }</svg></div><span>รายรับจากบริการที่เสร็จแล้ว</span><strong>฿{{ completedRevenue | number:'1.0-2' }}</strong><small>วันที่ {{ selectedDateLabel }}</small></article>
+    <article class="metric-card"><div class="metric-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">@for (path of iconPaths.users; track $index) { <path [attr.d]="path" /> }</svg></div><span>ลูกค้าที่มีนัด</span><strong>{{ customerCountToday }} <em>คน</em></strong><small>{{ store.selectedAppointments.length }} รายการ · {{ selectedDateLabel }}</small></article>
+    <article class="metric-card"><div class="metric-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">@for (path of iconPaths['door-open']; track $index) { <path [attr.d]="path" /> }</svg></div><span>ห้องบริการที่เปิดใช้งาน</span><strong>{{ activeRoomCount }} <em>ห้อง</em></strong><small>{{ store.branches.length }} สาขา</small></article>
+    <article class="metric-card"><div class="metric-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">@for (path of iconPaths['users-round']; track $index) { <path [attr.d]="path" /> }</svg></div><span>หมอนวดที่เปิดใช้งาน</span><strong>{{ activeStaffCount }} <em>คน</em></strong><small>ข้อมูลจากทีมของร้าน</small></article>
+  </div>
+  <div class="dashboard-columns">
+    <section class="dashboard-card next-bookings">
+      <div class="card-heading"><div><h2>นัดหมายตามวันที่เลือก</h2><p>รายการจากฐานข้อมูลของร้าน</p></div><input aria-label="เลือกวันที่" type="date" [(ngModel)]="store.selectedDate" (ngModelChange)="loadAppointments()"></div>
+      @if (store.selectedAppointments.length) {
+        @for (appointment of upcomingAppointments; track appointment.id) {
+          <article class="booking-row">
+            <time>{{ timeLabel(appointment.startsAt) }}</time>
+            <span class="mini-avatar">{{ store.customerName(appointment.customerId).slice(0, 1) }}</span>
+            <div><strong>{{ store.customerName(appointment.customerId) }}</strong><span>{{ store.serviceName(appointment.serviceId) }} · {{ store.staffName(appointment.staffId) }}</span></div>
+            <span class="status" [class.confirmed]="appointment.status === 'Scheduled'" [class.waiting]="appointment.status === 'Cancelled'">{{ statusLabel(appointment.status) }}</span>
+          </article>
+        }
+      } @else { <div class="empty-state">ยังไม่มีนัดหมายในวันที่เลือก</div> }
+    </section>
+    <section class="dashboard-card appointment-summary">
+      <div class="card-heading"><div><h2>สรุปสถานะนัดหมาย</h2><p>{{ selectedDateLabel }}</p></div></div>
+      <div class="summary-row"><span><i class="scheduled-dot"></i>นัดหมายแล้ว</span><strong>{{ pendingAppointments }}</strong></div>
+      <div class="summary-row"><span><i class="completed-dot"></i>เสร็จสิ้น</span><strong>{{ completedAppointmentCount }}</strong></div>
+      <div class="summary-row"><span><i class="cancelled-dot"></i>ยกเลิก</span><strong>{{ cancelledAppointmentCount }}</strong></div>
+      <div class="summary-row"><span><i class="service-dot-summary"></i>บริการที่เปิดใช้งาน</span><strong>{{ activeServiceCount }}</strong></div>
+    </section>
+  </div>
+  <section class="dashboard-card room-board">
+    <div class="card-heading"><div><h2>ห้องบริการ</h2><p>สถานะเปิดใช้งานจากข้อมูลสาขา</p></div><span class="room-count">{{ activeRoomCount }} ห้อง</span></div>
+    @if (activeRoomsList.length) {
+      <div class="room-grid">
+        @for (room of activeRoomsList; track room.id) {
+          <article class="room-tile">
+            <div><span class="room-symbol">⌖</span><span class="room-status">เปิดใช้งาน</span></div>
+            <strong>{{ room.name }}</strong>
+            <p>{{ store.branchName(room.branchId) }}</p>
+          </article>
+        }
+      </div>
+    } @else { <div class="empty-state">ยังไม่มีห้องบริการที่เปิดใช้งาน</div> }
+  </section>
+</section>

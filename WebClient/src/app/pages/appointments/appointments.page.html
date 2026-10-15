@@ -1,0 +1,34 @@
+<section class="welcome"><div><p class="eyebrow">จัดการคิวบริการ</p><h1>การนัดหมาย</h1><p class="subtitle">พนักงานสามารถบันทึกนัดและจัดการสถานะคิวได้</p></div></section>
+<div class="content-grid">
+  <section class="panel">
+    <div class="panel-heading"><div><h2>{{ editingAppointmentId ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมาย' }}</h2><p>เลือกสาขา บริการ หมอนวด ห้อง และลูกค้า</p></div></div>
+    @if (!store.branches.length || !store.services.length || !activeStaff.length || !activeRooms.length || !store.customers.length) {
+      <div class="empty-state">ต้องตั้งค่าสาขา บริการ หมอนวด ห้อง และลูกค้าก่อนสร้างนัดหมาย</div>
+    } @else {
+      <form class="form-stack" (ngSubmit)="createAppointment()">
+        <label>สาขา<ng-select name="appointmentBranch" [(ngModel)]="appointmentForm.branchId" [clearable]="false" [searchable]="false" required><ng-option [value]="store.selectedBranchId">{{ store.currentBranchName }}</ng-option></ng-select></label>
+        <label>บริการ<ng-select name="appointmentService" [(ngModel)]="appointmentForm.serviceId" placeholder="เลือกบริการ" [clearable]="false" required>@for (service of store.services; track service.id) { @if (service.isActive) { <ng-option [value]="service.id">{{ service.name }} · {{ service.durationMinutes }} นาที · ฿{{ service.price }}</ng-option> } }</ng-select></label>
+        <label>หมอนวด<ng-select name="appointmentStaff" [(ngModel)]="appointmentForm.staffId" placeholder="เลือกหมอนวด" [clearable]="false" required>@for (member of activeStaff; track member.id) { <ng-option [value]="member.id">{{ member.name }}</ng-option> }</ng-select></label>
+        <label>ห้องบริการ<ng-select name="appointmentRoom" [(ngModel)]="appointmentForm.roomId" placeholder="เลือกห้อง" [clearable]="false" required>@for (room of activeRooms; track room.id) { <ng-option [value]="room.id">{{ room.name }}</ng-option> }</ng-select></label>
+        <label>ลูกค้า<ng-select name="appointmentCustomer" [(ngModel)]="appointmentForm.customerId" placeholder="เลือกลูกค้า" [clearable]="false" required>@for (customer of store.customers; track customer.id) { <ng-option [value]="customer.id">{{ customer.name }}{{ customer.phone ? ' · ' + customer.phone : '' }}</ng-option> }</ng-select></label>
+        <div class="form-row"><label>วันที่<input name="appointmentDate" type="date" [(ngModel)]="appointmentForm.date" required></label><label>เวลาเริ่ม<input name="appointmentTime" type="time" [(ngModel)]="appointmentForm.time" required></label></div>
+        <label>หมายเหตุ<textarea name="appointmentNotes" [(ngModel)]="appointmentForm.notes" rows="2" maxlength="1000"></textarea></label>
+        <div class="form-actions"><button class="primary-button" type="submit" [disabled]="store.busy">{{ store.busy ? 'กำลังบันทึก…' : editingAppointmentId ? 'บันทึกการแก้ไข' : 'บันทึกนัดหมาย' }}</button>@if (editingAppointmentId) { <button class="customer-cancel-button" type="button" (click)="cancelAppointmentEdit()">ยกเลิก</button> }</div>
+      </form>
+    }
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><h2>ตารางนัดหมาย</h2><p>เลือกวันที่เพื่อดูคิวของร้าน</p></div><input aria-label="กรองวันที่" type="date" [(ngModel)]="store.selectedDate" (ngModelChange)="loadAppointments()"></div>
+    @if (!store.selectedAppointments.length) { <div class="empty-state">ไม่พบนัดหมายในวันนี้</div> }
+    <div class="appointment-list">
+      @for (appointment of store.selectedAppointments; track appointment.id) {
+        <article class="appointment appointment-record">
+          <time><strong>{{ timeLabel(appointment.startsAt) }}</strong><small>{{ timeLabel(appointment.endsAt) }}</small></time>
+          <span class="service-dot dot-green"></span>
+          <div class="appointment-info"><strong>{{ store.customerName(appointment.customerId) }}</strong><small>{{ store.serviceName(appointment.serviceId) }} · {{ store.staffName(appointment.staffId) }} · {{ store.roomName(appointment.roomId) }}</small><small>{{ store.branchName(appointment.branchId) }}</small></div>
+          <div class="appointment-actions"><span class="status" [class.confirmed]="appointment.status === 'Scheduled' || appointment.status === 'InProgress'" [class.waiting]="appointment.status === 'Cancelled'">{{ appointment.paidSaleId ? 'ชำระแล้ว' : statusLabel(appointment.status) }}</span>@if (appointment.status === 'Scheduled') { <button type="button" (click)="editAppointment(appointment)">แก้ไข</button><button type="button" (click)="updateAppointmentStatus(appointment, 'InProgress')">เริ่ม</button><button type="button" (click)="updateAppointmentStatus(appointment, 'Cancelled')">ยกเลิก</button> } @else if (appointment.status === 'InProgress') { <button type="button" (click)="updateAppointmentStatus(appointment, 'Completed')">เสร็จสิ้น</button><button type="button" (click)="updateAppointmentStatus(appointment, 'Cancelled')">ยกเลิก</button> }</div>
+        </article>
+      }
+    </div>
+  </section>
+</div>
