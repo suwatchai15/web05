@@ -108,16 +108,6 @@
           <small>{{ paymentMethodLabel(pos.lastSale.paymentMethod) }} · {{ timeLabel(pos.lastSale.createdAt) }}</small>
         </div>
       }
-      <div class="pos-recent-sales">
-        <strong>รายการขายวันนี้</strong>
-        @if (posSales.length) {
-          @for (sale of posSales; track sale.id) {
-            <article><span><b>{{ sale.saleNumber }}</b><small>{{ store.branchName(sale.branchId) }} · {{ timeLabel(sale.createdAt) }}</small></span><strong>฿{{ sale.total | number:'1.0-2' }}</strong></article>
-          }
-        } @else {
-          <small>ยังไม่มีรายการขายวันนี้</small>
-        }
-      </div>
     </div>
   </aside>
   @if (paymentDialogOpen) {

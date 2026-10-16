@@ -65,8 +65,8 @@
       <div class="page">
         @if (store.errorMessage) { <div class="error-banner" role="alert">{{ store.errorMessage }}</div> }
         @if (store.workspaceLoaded) { <router-outlet /> }
-        <footer>Massage Platform <span>·</span> {{ store.tenantSlug }}</footer>
       </div>
+      <footer class="app-footer">Massage Platform <span>·</span> {{ store.tenantSlug }}</footer>
     </main>
     @if (store.branchDialogOpen) {
       <div class="branch-dialog-backdrop" (click)="store.closeBranchDialog()">

@@ -3,9 +3,9 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit } from '@angular
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
-import { dayRange, localDateValue, paymentMethodLabel, timeLabel } from '../../core/format';
+import { paymentMethodLabel, timeLabel } from '../../core/format';
 import { MassageApi } from '../../core/massage-api';
-import { MassageService, Room, Sale, StaffMember } from '../../core/models';
+import { MassageService, Room, StaffMember } from '../../core/models';
 import { PosSession } from '../../core/pos-session';
 import { WorkspaceStore } from '../../core/workspace.store';
 
@@ -32,7 +32,6 @@ export class PosPage implements OnInit {
   ];
   protected posCategory: PosCategory = 'all';
   protected posSearch = '';
-  protected posSales: Sale[] = [];
   protected paymentDialogOpen = false;
   protected receiptDialogOpen = false;
 
@@ -45,14 +44,12 @@ export class PosPage implements OnInit {
 
   ngOnInit(): void {
     this.ensureStaffAndRoom();
-    void this.loadPosSales();
     this.store.branchChanged.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       // A checkout started from another branch's booking can't be paid here.
       if (this.pos.pendingAppointment) this.pos.clearCart();
       this.pos.staffId = '';
       this.pos.roomId = '';
       this.ensureStaffAndRoom();
-      void this.loadPosSales();
     });
   }
 
@@ -122,7 +119,6 @@ export class PosPage implements OnInit {
         ...(paidAppointmentId ? { appointmentId: paidAppointmentId } : {}),
       });
       this.pos.lastSale = sale;
-      this.posSales = [sale, ...this.posSales.filter((item) => item.id !== sale.id)].slice(0, 5);
       this.pos.cart = [];
       this.pos.pendingAppointment = null;
       this.paymentDialogOpen = false;
@@ -152,13 +148,6 @@ export class PosPage implements OnInit {
     if (/อโรม|aroma|น้ำมัน/.test(name)) return 'aroma';
     if (/สปา|ฝ่าเท้า|นวดเท้า|สครับ|ประคบ|spa|scrub|foot/.test(name)) return 'spa';
     return 'thai';
-  }
-
-  private async loadPosSales(): Promise<void> {
-    const { from, to } = dayRange(localDateValue(new Date()));
-    await this.store.run(async () => {
-      this.posSales = await this.api.sales(from, to, this.store.selectedBranchId);
-    });
   }
 
   /** Defaults the therapist and room to the first active ones of the branch, as the original selectors did. */

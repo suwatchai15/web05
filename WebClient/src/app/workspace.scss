@@ -150,7 +150,10 @@ button:disabled { cursor: wait; opacity: .65; }
 }
 
 .main-content {
+  display: flex;
   min-width: 0;
+  min-height: 100vh;
+  flex-direction: column;
   background: #f5f6f2;
 }
 
@@ -176,6 +179,7 @@ button:disabled { cursor: wait; opacity: .65; }
 }
 
 .page {
+  flex: 1 0 auto;
   max-width: 1480px;
   margin-left: 232px;
   padding: clamp(22px, 3vw, 38px);
@@ -237,8 +241,13 @@ button:disabled { cursor: wait; opacity: .65; }
   box-shadow: 0 0 0 3px rgb(116 149 133 / 15%);
 }
 
-footer {
+.app-footer {
+  margin-left: 232px;
+  padding: 14px clamp(18px, 3vw, 40px);
+  border-top: 1px solid #e5e8e2;
+  background: #fff;
   color: #8f9992;
+  font-size: 14px;
 }
 
 @media (max-width: 1050px) {
@@ -247,7 +256,8 @@ footer {
   }
 
   .topbar,
-  .page {
+  .page,
+  .app-footer {
     margin-left: 216px;
   }
 
@@ -314,7 +324,7 @@ footer {
     gap: 1px;
     padding: 4px 2px;
     border-radius: 9px;
-    font-size: 9px;
+    font-size: 14px;
     line-height: 1.25;
     text-align: center;
     white-space: normal;
@@ -342,7 +352,7 @@ footer {
     right: 7px;
     min-width: 16px;
     padding: 1px 4px;
-    font-size: 8px;
+    font-size: 14px;
   }
 
   .topbar {
@@ -374,6 +384,15 @@ footer {
   .page {
     margin: 0;
     padding: 23px 17px 24px;
+  }
+
+  .main-content {
+    min-height: calc(100vh - 66px - env(safe-area-inset-bottom));
+  }
+
+  .app-footer {
+    margin-left: 0;
+    padding: 12px 17px;
   }
 
   .welcome {
@@ -460,7 +479,7 @@ footer {
 
   .status {
     padding: 4px 6px;
-    font-size: 8px;
+    font-size: 14px;
   }
 
   .schedule-day {
@@ -561,17 +580,17 @@ footer {
   }
 
   .profile-copy strong {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .profile-copy small {
     margin-top: 4px;
-    font-size: 10px;
+    font-size: 14px;
   }
 
   .nav-heading {
     margin: 0 10px 9px;
-    font-size: 10px;
+    font-size: 14px;
     font-weight: 700;
     letter-spacing: .9px;
     text-transform: uppercase;
@@ -612,7 +631,7 @@ footer {
   .nav-count {
     margin-left: auto;
     border-radius: 20px;
-    font-size: 10px;
+    font-size: 14px;
   }
 
   .sidebar-bottom {
@@ -641,7 +660,7 @@ footer {
     border-radius: 8px;
     background: #214a3d;
     color: #e0e9e4;
-    font-size: 10px;
+    font-size: 14px;
     text-align: left;
   }
 
@@ -650,7 +669,7 @@ footer {
     top: 0;
     z-index: 1;
     display: flex;
-    height: 98px;
+    height: 80px;
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid #e5e8e2;
@@ -659,7 +678,7 @@ footer {
   .topbar-heading p {
     margin: 0 0 4px;
     color: #7e8a83;
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .topbar-heading h1 {
@@ -734,11 +753,12 @@ footer {
     right: 0;
     min-width: 16px;
     padding: 1px 4px;
-    font-size: 8px;
+    font-size: 14px;
   }
 
   .topbar,
-  .page {
+  .page,
+  .app-footer {
     margin-left: 76px;
   }
 }
@@ -791,7 +811,7 @@ footer {
     gap: 2px;
     padding: 4px 2px;
     border-radius: 9px;
-    font-size: 9px;
+    font-size: 14px;
     line-height: 1.25;
     text-align: center;
     white-space: normal;
@@ -821,6 +841,10 @@ footer {
   .main-content > .page {
     margin-left: 0;
     padding: 18px 17px 24px;
+  }
+
+  .app-footer {
+    margin-left: 0;
   }
 
   .topbar-heading {
