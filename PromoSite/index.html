@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="MassageFlow ระบบบริหารร้านนวดครบวงจร จองคิว POS ทีมงาน และรายงาน ในที่เดียว"
+    />
+    <title>MassageFlow | ระบบบริหารร้านนวด</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap");
+
+      :root {
+        --ink: #16352f;
+        --muted: #628078;
+        --cream: #fbfaf5;
+        --mint: #e0f0e5;
+        --teal: #087a68;
+        --teal-dark: #075d50;
+        --orange: #ee8154;
+        --line: #dce9e2;
+        --shadow: 0 24px 60px rgba(20, 65, 55, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--cream);
+        font-family: "Noto Sans Thai", "DM Sans", sans-serif;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .container {
+        width: min(1140px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+      .eyebrow {
+        color: var(--teal);
+        font-size: 0.86rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      nav {
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        z-index: 3;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font:
+          700 1.35rem "DM Sans",
+          sans-serif;
+        letter-spacing: -0.04em;
+      }
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 33px;
+        height: 33px;
+        border-radius: 11px;
+        color: white;
+        background: var(--teal);
+        font-size: 17px;
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        color: #47645d;
+        font-size: 0.92rem;
+      }
+      .button {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        border-radius: 10px;
+        padding: 13px 20px;
+        cursor: pointer;
+        font: 600 0.94rem inherit;
+        transition: 0.2s ease;
+      }
+      .button:hover {
+        transform: translateY(-2px);
+      }
+      .button-primary {
+        color: white;
+        background: var(--teal);
+        box-shadow: 0 9px 18px rgba(8, 122, 104, 0.21);
+      }
+      .button-primary:hover {
+        background: var(--teal-dark);
+      }
+      .button-light {
+        color: var(--ink);
+        background: white;
+        border: 1px solid var(--line);
+      }
+
+      .hero {
+        overflow: hidden;
+        position: relative;
+        padding-bottom: 78px;
+      }
+      .hero::before {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        width: 760px;
+        height: 760px;
+        top: -320px;
+        right: -220px;
+        border-radius: 50%;
+        background: #d7eee0;
+      }
+      .hero::after {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        width: 260px;
+        height: 260px;
+        top: 360px;
+        left: -130px;
+        border-radius: 50%;
+        background: #f9dfcc;
+      }
+      .hero-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 0.96fr 1.04fr;
+        gap: 42px;
+        align-items: center;
+        min-height: 560px;
+      }
+      h1 {
+        max-width: 620px;
+        margin: 13px 0 18px;
+        font-size: clamp(2.7rem, 5vw, 4.55rem);
+        line-height: 1.13;
+        letter-spacing: -0.055em;
+      }
+      h1 em {
+        color: var(--teal);
+        font-style: normal;
+      }
+      .hero-copy {
+        max-width: 515px;
+        color: var(--muted);
+        font-size: 1.04rem;
+        line-height: 1.9;
+      }
+      .hero-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+      }
+      .small-note {
+        margin: 14px 0 0;
+        color: #779088;
+        font-size: 0.82rem;
+      }
+      .small-note span {
+        color: var(--teal);
+        font-weight: 700;
+      }
+
+      .app-window {
+        position: relative;
+        width: min(100%, 555px);
+        margin: 20px auto 0;
+        border: 8px solid #fff;
+        border-radius: 20px;
+        background: #f7fbf8;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .app-topbar {
+        height: 44px;
+        padding: 0 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #fff;
+        border-bottom: 1px solid #e8f0eb;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #f2b999;
+      }
+      .dot:nth-child(2) {
+        background: #f2d084;
+      }
+      .dot:nth-child(3) {
+        background: #9bd5b5;
+      }
+      .app-label {
+        margin-left: 8px;
+        color: #779088;
+        font: 600 0.68rem "DM Sans";
+      }
+      .dashboard {
+        display: grid;
+        grid-template-columns: 104px 1fr;
+        min-height: 300px;
+      }
+      .side {
+        padding: 19px 11px;
+        background: #163f37;
+        color: #c4dbd2;
+        font-size: 0.66rem;
+      }
+      .side-logo {
+        color: white;
+        font: 700 0.8rem "DM Sans";
+        margin-bottom: 25px;
+      }
+      .side-item {
+        padding: 8px;
+        margin: 3px 0;
+        border-radius: 5px;
+      }
+      .side-item.active {
+        color: white;
+        background: #267b6b;
+      }
+      .content {
+        padding: 20px;
+      }
+      .content-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .content-head strong {
+        font-size: 0.87rem;
+      }
+      .date {
+        color: #93a9a1;
+        font-size: 0.59rem;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 9px;
+        margin: 18px 0;
+      }
+      .stat {
+        padding: 11px;
+        background: #fff;
+        border: 1px solid #e7efea;
+        border-radius: 8px;
+      }
+      .stat small {
+        display: block;
+        color: #779088;
+        font-size: 0.54rem;
+      }
+      .stat b {
+        display: block;
+        margin-top: 4px;
+        font: 700 0.94rem "DM Sans";
+      }
+      .stat b.teal {
+        color: var(--teal);
+      }
+      .booking-card {
+        padding: 12px;
+        background: white;
+        border: 1px solid #e7efea;
+        border-radius: 8px;
+      }
+      .booking-title {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 0.65rem;
+        font-weight: 700;
+      }
+      .slot {
+        display: grid;
+        grid-template-columns: 35px 1fr 47px;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 0;
+        border-top: 1px solid #edf3ef;
+        color: #69837a;
+        font-size: 0.56rem;
+      }
+      .slot:first-of-type {
+        border-top: 0;
+      }
+      .slot b {
+        color: #355a50;
+      }
+      .badge {
+        padding: 3px 4px;
+        border-radius: 4px;
+        color: #087a68;
+        background: #e1f3e8;
+        font-size: 0.51rem;
+        text-align: center;
+      }
+      .floating-card {
+        position: absolute;
+        right: -18px;
+        bottom: 34px;
+        padding: 13px 15px;
+        border-radius: 11px;
+        background: white;
+        box-shadow: 0 12px 30px rgba(18, 62, 51, 0.16);
+        font-size: 0.67rem;
+      }
+      .floating-card b {
+        display: block;
+        margin-top: 3px;
+        color: var(--teal);
+        font: 700 1rem "DM Sans";
+      }
+
+      .proof {
+        padding: 25px 0;
+        background: #153f37;
+        color: #ddede5;
+      }
+      .proof-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+      }
+      .proof p {
+        margin: 0;
+        color: #a6c3b8;
+        font-size: 0.88rem;
+      }
+      .proof-logos {
+        display: flex;
+        gap: clamp(18px, 4vw, 46px);
+        color: white;
+        font: 600 0.82rem "DM Sans";
+        opacity: 0.85;
+      }
+
+      section {
+        padding: 92px 0;
+      }
+      .section-heading {
+        max-width: 635px;
+        margin: 0 auto 48px;
+        text-align: center;
+      }
+      h2 {
+        margin: 10px 0 13px;
+        font-size: clamp(2rem, 3.4vw, 3rem);
+        letter-spacing: -0.045em;
+        line-height: 1.25;
+      }
+      .section-heading p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.75;
+      }
+      .features {
+        background: #f0f6f1;
+      }
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .feature {
+        padding: 26px;
+        border-radius: 14px;
+        background: white;
+        border: 1px solid #e1ece5;
+      }
+      .feature-icon {
+        display: grid;
+        place-items: center;
+        width: 43px;
+        height: 43px;
+        margin-bottom: 19px;
+        color: var(--teal);
+        background: var(--mint);
+        border-radius: 12px;
+        font-size: 1.24rem;
+      }
+      .feature h3 {
+        margin: 0 0 8px;
+        font-size: 1.06rem;
+      }
+      .feature p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.89rem;
+        line-height: 1.7;
+      }
+      .feature:nth-child(2) .feature-icon {
+        background: #fce7da;
+        color: #cf653d;
+      }
+      .feature:nth-child(3) .feature-icon {
+        background: #e8e4f8;
+        color: #705cb8;
+      }
+
+      .benefit {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 80px;
+        align-items: center;
+      }
+      .benefit-visual {
+        padding: 28px;
+        border-radius: 24px;
+        background: #f6e5d6;
+      }
+      .mini-phone {
+        max-width: 330px;
+        padding: 17px;
+        margin: 0 auto;
+        border-radius: 28px;
+        color: #143c34;
+        background: white;
+        box-shadow: 0 19px 35px rgba(108, 72, 47, 0.14);
+      }
+      .phone-bar {
+        height: 18px;
+        width: 92px;
+        margin: -6px auto 17px;
+        border-radius: 9px;
+        background: #163f37;
+      }
+      .phone-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 17px;
+      }
+      .phone-top strong {
+        font-size: 0.91rem;
+      }
+      .phone-top small {
+        color: var(--teal);
+        font-size: 0.59rem;
+      }
+      .service {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 0;
+        border-top: 1px solid #edf0ee;
+      }
+      .service:first-of-type {
+        border-top: 0;
+      }
+      .service-icon {
+        width: 31px;
+        height: 31px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: #e2f1e7;
+        font-size: 0.82rem;
+      }
+      .service span {
+        flex: 1;
+        font-size: 0.67rem;
+        font-weight: 600;
+      }
+      .service b {
+        font: 700 0.69rem "DM Sans";
+      }
+      .service button {
+        padding: 5px 7px;
+        border: 0;
+        border-radius: 5px;
+        color: white;
+        background: var(--teal);
+        font: 600 0.55rem inherit;
+      }
+      .benefit-text p {
+        color: var(--muted);
+        line-height: 1.82;
+      }
+      .check-list {
+        padding: 0;
+        margin: 24px 0 0;
+        list-style: none;
+      }
+      .check-list li {
+        margin: 13px 0;
+        font-size: 0.9rem;
+      }
+      .check-list li::before {
+        content: "✓";
+        display: inline-grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 50%;
+        color: var(--teal);
+        background: var(--mint);
+        font-weight: 700;
+      }
+
+      .cta {
+        padding: 0 0 90px;
+      }
+      .cta-box {
+        padding: 58px 30px;
+        border-radius: 22px;
+        text-align: center;
+        color: white;
+        background: #0b6f5f;
+        overflow: hidden;
+        position: relative;
+      }
+      .cta-box::before,
+      .cta-box::after {
+        content: "";
+        position: absolute;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 50%;
+      }
+      .cta-box::before {
+        width: 360px;
+        height: 360px;
+        top: -260px;
+        left: -140px;
+      }
+      .cta-box::after {
+        width: 300px;
+        height: 300px;
+        right: -140px;
+        bottom: -230px;
+      }
+      .cta-box > * {
+        position: relative;
+        z-index: 1;
+      }
+      .cta h2 {
+        margin-top: 0;
+      }
+      .cta p {
+        margin: 0 0 24px;
+        color: #c7e5da;
+      }
+      .cta .button {
+        color: var(--teal);
+        background: white;
+      }
+      footer {
+        padding: 26px 0;
+        border-top: 1px solid var(--line);
+        color: #728d84;
+        font-size: 0.78rem;
+      }
+      .footer-inner {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .footer-links {
+        display: flex;
+        gap: 19px;
+      }
+
+      @media (max-width: 800px) {
+        .nav-links {
+          display: none;
+        }
+        .hero {
+          padding-bottom: 54px;
+        }
+        .hero-grid,
+        .benefit {
+          grid-template-columns: 1fr;
+          gap: 38px;
+        }
+        .hero-grid {
+          padding-top: 35px;
+        }
+        .hero-copy {
+          font-size: 0.98rem;
+        }
+        .app-window {
+          max-width: 520px;
+        }
+        .feature-grid {
+          grid-template-columns: 1fr;
+        }
+        .proof-inner {
+          display: block;
+          text-align: center;
+        }
+        .proof-logos {
+          justify-content: center;
+          margin-top: 16px;
+        }
+        .benefit-text {
+          order: -1;
+        }
+        section {
+          padding: 70px 0;
+        }
+      }
+      @media (max-width: 460px) {
+        .container {
+          width: min(100% - 28px, 1140px);
+        }
+        .nav-cta {
+          padding: 10px 13px;
+          font-size: 0.82rem;
+        }
+        .dashboard {
+          grid-template-columns: 80px 1fr;
+        }
+        .side {
+          padding: 15px 7px;
+        }
+        .side-item {
+          padding: 7px 4px;
+        }
+        .content {
+          padding: 14px;
+        }
+        .stats {
+          gap: 5px;
+        }
+        .stat {
+          padding: 8px;
+        }
+        .floating-card {
+          right: -5px;
+          bottom: 15px;
+        }
+        .footer-inner {
+          display: block;
+        }
+        .footer-links {
+          margin-top: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero" id="home">
+      <div class="container">
+        <nav>
+          <a class="brand" href="#home" aria-label="MassageFlow หน้าแรก"
+            ><span class="brand-mark">✦</span>MassageFlow</a
+          >
+          <div class="nav-links">
+            <a href="#features">ฟีเจอร์</a><a href="#booking">ระบบจอง</a
+            ><a href="#contact">ราคาแพ็กเกจ</a>
+          </div>
+          <a class="button button-primary nav-cta" href="#contact"
+            >ขอทดลองใช้ฟรี</a
+          >
+        </nav>
+        <div class="hero-grid">
+          <div>
+            <div class="eyebrow">สร้างมาเพื่อธุรกิจ Wellness</div>
+            <h1>บริหารร้านนวด<br /><em>ให้ไหลลื่น</em> ทุกวัน</h1>
+            <p class="hero-copy">
+              รวมการจองคิว หน้าร้าน ทีมงาน และยอดขายไว้ในที่เดียว
+              เพื่อให้คุณมีเวลาดูแลลูกค้ามากขึ้น
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#contact"
+                >เริ่มทดลองใช้ฟรี <span>→</span></a
+              ><a class="button button-light" href="#features">ดูฟีเจอร์</a>
+            </div>
+            <p class="small-note">
+              <span>✓</span> ทดลองใช้ฟรี 14 วัน &nbsp;·&nbsp;
+              ไม่ต้องใช้บัตรเครดิต
+            </p>
+          </div>
+          <div class="app-window" aria-label="ตัวอย่างหน้าจอระบบ MassageFlow">
+            <div class="app-topbar">
+              <i class="dot"></i><i class="dot"></i><i class="dot"></i
+              ><span class="app-label">massageflow.app / overview</span>
+            </div>
+            <div class="dashboard">
+              <aside class="side">
+                <div class="side-logo">✦ MassageFlow</div>
+                <div class="side-item active">▦ ภาพรวม</div>
+                <div class="side-item">▣ การจอง</div>
+                <div class="side-item">▤ หน้าร้าน</div>
+                <div class="side-item">♙ ทีมงาน</div>
+                <div class="side-item">◉ ลูกค้า</div>
+              </aside>
+              <main class="content">
+                <div class="content-head">
+                  <strong>สวัสดี, May 👋</strong
+                  ><span class="date">19 ต.ค. 2569</span>
+                </div>
+                <div class="stats">
+                  <div class="stat">
+                    <small>ยอดขายวันนี้</small><b class="teal">฿12,450</b>
+                  </div>
+                  <div class="stat"><small>การจองวันนี้</small><b>18</b></div>
+                  <div class="stat"><small>คิวรอ</small><b>04</b></div>
+                </div>
+                <div class="booking-card">
+                  <div class="booking-title">
+                    <span>นัดหมายวันนี้</span
+                    ><span style="color: #087a68">ดูทั้งหมด</span>
+                  </div>
+                  <div class="slot">
+                    <span>10:00</span><b>คุณกานต์ · นวดไทย</b
+                    ><span class="badge">ยืนยัน</span>
+                  </div>
+                  <div class="slot">
+                    <span>11:30</span><b>คุณภา · ออยล์</b
+                    ><span class="badge">ยืนยัน</span>
+                  </div>
+                  <div class="slot">
+                    <span>13:00</span><b>คุณแอน · สปา</b
+                    ><span class="badge">มาแล้ว</span>
+                  </div>
+                </div>
+              </main>
+            </div>
+            <div class="floating-card">ยอดขายเดือนนี้<b>฿248,960 ↗</b></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="proof">
+      <div class="container proof-inner">
+        <p>ออกแบบมาให้ร้านเล็กและหลายสาขาทำงานง่ายขึ้น</p>
+        <div class="proof-logos">
+          <span>⚘ SERENE SPA</span><span>○ SABA THAI</span><span>✦ MELLOW</span>
+        </div>
+      </div>
+    </div>
+
+    <section class="features" id="features">
+      <div class="container">
+        <div class="section-heading">
+          <div class="eyebrow">ทุกอย่างในระบบเดียว</div>
+          <h2>เลิกสลับหลายแอป แล้วกลับมาโฟกัสกับลูกค้า</h2>
+          <p>
+            เครื่องมือสำคัญของร้านถูกออกแบบให้ใช้ร่วมกันอย่างเป็นธรรมชาติ
+            ตั้งแต่ลูกค้าจองจนชำระเงิน
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature">
+            <div class="feature-icon">▣</div>
+            <h3>จองคิวอย่างเป็นระบบ</h3>
+            <p>
+              เห็นตารางนัด หมอนวด และห้องว่างแบบเรียลไทม์
+              ลดการจองซ้ำและการตกหล่น
+            </p>
+          </article>
+          <article class="feature">
+            <div class="feature-icon">▤</div>
+            <h3>POS ที่หน้าร้าน</h3>
+            <p>
+              คิดเงินเร็ว บันทึกบริการและช่องทางชำระเงิน
+              พร้อมสรุปยอดขายในไม่กี่คลิก
+            </p>
+          </article>
+          <article class="feature">
+            <div class="feature-icon">◌</div>
+            <h3>รู้จักลูกค้ามากขึ้น</h3>
+            <p>
+              เก็บประวัติการใช้บริการและข้อมูลติดต่อ
+              เพื่อให้ทุกครั้งที่กลับมารู้สึกพิเศษ
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="booking">
+      <div class="container benefit">
+        <div class="benefit-visual">
+          <div class="mini-phone">
+            <div class="phone-bar"></div>
+            <div class="phone-top">
+              <strong>เลือกบริการ</strong><small>3 ขั้นตอน</small>
+            </div>
+            <div class="service">
+              <span class="service-icon">♨</span
+              ><span
+                >นวดไทยเพื่อผ่อนคลาย<br /><small style="color: #829b92"
+                  >60 นาที</small
+                ></span
+              ><b>฿450</b><button>เลือก</button>
+            </div>
+            <div class="service">
+              <span class="service-icon" style="background: #f9e7da">❋</span
+              ><span
+                >อโรมาออยล์<br /><small style="color: #829b92"
+                  >90 นาที</small
+                ></span
+              ><b>฿850</b><button>เลือก</button>
+            </div>
+            <div class="service">
+              <span class="service-icon" style="background: #e8e4f8">☾</span
+              ><span
+                >นวดเท้า<br /><small style="color: #829b92"
+                  >60 นาที</small
+                ></span
+              ><b>฿400</b><button>เลือก</button>
+            </div>
+          </div>
+        </div>
+        <div class="benefit-text">
+          <div class="eyebrow">พร้อมรับทุกจังหวะของร้าน</div>
+          <h2>จากคิวแรก ถึงยอดปิดวัน</h2>
+          <p>
+            MassageFlow ช่วยให้ทีมหน้าร้านเห็นข้อมูลเดียวกันตลอดเวลา
+            ไม่ว่าคุณจะมีหนึ่งห้องหรือหลายสาขา
+          </p>
+          <ul class="check-list">
+            <li>จัดการตารางหมอนวดและห้องบริการ</li>
+            <li>ดูยอดขายและการจองได้ทันที</li>
+            <li>รองรับสิทธิ์พนักงานตามบทบาท</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="contact">
+      <div class="container">
+        <div class="cta-box">
+          <div class="eyebrow" style="color: #b8e5d4">เริ่มต้นได้วันนี้</div>
+          <h2>ให้ร้านของคุณทำงาน<br />ได้ง่ายกว่าที่เคย</h2>
+          <p>ลองใช้ MassageFlow ฟรี 14 วัน แล้วสัมผัสความต่างด้วยตัวเอง</p>
+          <a
+            class="button"
+            href="mailto:hello@massageflow.example?subject=ขอทดลองใช้%20MassageFlow"
+            >ขอทดลองใช้ฟรี <span>→</span></a
+          >
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container footer-inner">
+        <span>© 2026 MassageFlow. ระบบบริหารร้านนวดครบวงจร</span>
+        <div class="footer-links">
+          <a href="#features">ฟีเจอร์</a
+          ><a href="mailto:hello@massageflow.example">ติดต่อเรา</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
